@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="..\build\SuiviSeriesTV.props" />
-</Project>
