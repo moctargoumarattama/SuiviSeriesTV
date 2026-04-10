@@ -1,9 +1,5 @@
-Oui — exactement.
-Dans le README, il faut mettre les étapes pour que **quelqu’un d’autre récupère le projet, installe les dépendances, configure la base, puis lance l’application**.
 
-Et comme tu as déjà les commandes que tu as utilisées au moment de créer l’application, on va les transformer en **instructions claires avec explication du pourquoi**.
-
-Voici un **README.md complet, prêt à copier-coller** :
+README.md 
 
 # 🎬 SuiviSeriesTV
 
