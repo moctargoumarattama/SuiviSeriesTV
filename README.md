@@ -2,7 +2,7 @@
 
 ---
 
-# 📄 👉 Ton README prêt à utiliser
+# 📄 👉  README prêt à utiliser
 
 # 🎬 SuiviSeriesTV
 
@@ -163,33 +163,9 @@ Créer une application moderne de suivi de contenus avec une expérience utilisa
 
 ---
 
-# 🚀 Ce que tu dois faire maintenant
 
-1. Va sur ton repo GitHub
-2. Clique sur **Add file → Create new file**
-3. Nom :
 
-```
-README.md
-```
 
-4. Colle le contenu
-5. Clique sur **Commit changes**
-
----
-
-# 🔥 Impact direct
-
-👉 Avant :
-
-* repo technique
-* difficile à comprendre
-
-👉 Après :
-
-* projet clair
-* installable
-* présentable à un recruteur 💼
 
 ---
 
