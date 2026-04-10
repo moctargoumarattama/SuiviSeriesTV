@@ -26,6 +26,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(s => s.BackdropUrl).HasMaxLength(400);
             entity.Property(s => s.PersonalComment).HasMaxLength(1200);
             entity.Property(s => s.PersonalRating).HasDefaultValue(0);
+            entity.Property(s => s.WatchlistOrder);
             entity.Property(s => s.DateAdded).HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.HasOne(s => s.Owner)
                 .WithMany()
@@ -33,6 +34,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .OnDelete(DeleteBehavior.SetNull);
             entity.HasIndex(s => new { s.OwnerId, s.Title });
             entity.HasIndex(s => new { s.OwnerId, s.Status, s.ContentType });
+            entity.HasIndex(s => new { s.OwnerId, s.Status, s.WatchlistOrder });
             entity.HasIndex(s => s.NextReleaseDate);
         });
     }

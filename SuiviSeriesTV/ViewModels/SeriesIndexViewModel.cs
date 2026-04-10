@@ -13,7 +13,8 @@ public class SeriesIndexViewModel
         "title_asc",
         "title_desc",
         "rating_desc",
-        "progress_desc"
+        "progress_desc",
+        "watchlist_order"
     ];
 
     public string? SearchTerm { get; set; }

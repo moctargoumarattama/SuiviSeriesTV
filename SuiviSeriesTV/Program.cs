@@ -1,6 +1,8 @@
 using System.IO;
+using System.IO.Compression;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using SuiviSeriesTV.Configuration;
 using SuiviSeriesTV.Data;
@@ -17,10 +19,24 @@ builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
 builder.Services.AddControllersWithViews();
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+});
+builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
+{
+    options.Level = CompressionLevel.Fastest;
+});
+builder.Services.Configure<GzipCompressionProviderOptions>(options =>
+{
+    options.Level = CompressionLevel.Fastest;
+});
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "App_Data", "DataProtection-Keys")))
-    .SetApplicationName("SuiviSeriesTV");
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    .SetApplicationName("ZerraTV");
+builder.Services.AddDbContextPool<ApplicationDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection(EmailSettings.SectionName));
 builder.Services.Configure<SeedAccountsSettings>(builder.Configuration.GetSection(SeedAccountsSettings.SectionName));
@@ -72,21 +88,19 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
+app.UseResponseCompression();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = context =>
+    {
+        const int cacheDays = 7;
+        context.Context.Response.Headers["Cache-Control"] = $"public,max-age={cacheDays * 24 * 60 * 60}";
+    }
+});
 
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
-
-app.MapControllerRoute(
-    name: "admin",
-    pattern: "Admin/{action=Index}/{id?}",
-    defaults: new { controller = "Admin" });
-
-app.MapControllerRoute(
-    name: "user",
-    pattern: "User/{action=Index}/{id?}",
-    defaults: new { controller = "User" });
 
 app.MapControllerRoute(
     name: "default",

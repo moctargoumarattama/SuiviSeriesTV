@@ -1,15 +1,15 @@
-﻿@model SeriesIndexViewModel
+@model SeriesIndexViewModel
 @{
     ViewData["Title"] = "Bibliotheque";
 }
 
-<section class="hero-strip mb-4 p-4 rounded-4">
+<section class="hero-strip mb-4 p-4 rounded-4 reveal premium-panel">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
         <div>
             <h1 class="h3 mb-1">Bibliotheque premium</h1>
-            <p class="text-muted mb-0">Gerez vos series, films et anime avec une progression claire et des actions rapides.</p>
+            <p class="text-muted mb-0">Gerez vos series, films et anime avec une navigation claire et elegante.</p>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap">
             <a asp-action="Dashboard" class="btn btn-outline-secondary">Tableau de bord</a>
             <a asp-action="Calendar" class="btn btn-outline-secondary">Calendrier</a>
             <a asp-action="ExportCsv" class="btn btn-outline-secondary">Exporter CSV</a>
@@ -18,7 +18,7 @@
     </div>
 </section>
 
-<div class="row g-3 mb-4">
+<div class="row g-3 mb-4 reveal">
     <div class="col-6 col-md-3">
         <div class="mini-stat-card">
             <span>A voir</span>
@@ -45,12 +45,15 @@
     </div>
 </div>
 
-<div class="card border-0 shadow-sm mb-4">
+<div class="card border-0 shadow-sm mb-4 reveal premium-panel">
     <div class="card-body">
         <form method="get" asp-action="Index" class="row g-3 align-items-end">
             <div class="col-md-3">
                 <label class="form-label">Recherche</label>
-                <input class="form-control" type="text" name="searchTerm" value="@Model.SearchTerm" placeholder="Titre ou synopsis..." />
+                <div class="position-relative">
+                    <input id="librarySearchInput" class="form-control" type="text" name="searchTerm" value="@Model.SearchTerm" placeholder="Titre ou synopsis..." autocomplete="off" />
+                    <div id="librarySearchSuggestions" class="search-suggestions d-none" role="listbox" aria-label="Suggestions"></div>
+                </div>
             </div>
             <div class="col-md-2">
                 <label class="form-label">Genre</label>
@@ -95,6 +98,7 @@
                     <option value="title_desc" selected="@(Model.SortBy == "title_desc" ? "selected" : null)">Titre Z-A</option>
                     <option value="rating_desc" selected="@(Model.SortBy == "rating_desc" ? "selected" : null)">Top notes</option>
                     <option value="progress_desc" selected="@(Model.SortBy == "progress_desc" ? "selected" : null)">Progression</option>
+                    <option value="watchlist_order" selected="@(Model.SortBy == "watchlist_order" ? "selected" : null)">Ordre de ma liste</option>
                 </select>
             </div>
             <div class="col-md-1">
@@ -113,7 +117,7 @@
 
 @if (!Model.Series.Any())
 {
-    <div class="empty-state card border-0 shadow-sm">
+    <div class="empty-state card border-0 shadow-sm reveal">
         <div class="card-body p-5 text-center">
             <h2 class="h5">Aucun contenu trouve</h2>
             <p class="text-muted mb-4">Ajustez les filtres ou ajoutez un contenu pour demarrer votre suivi.</p>
@@ -123,11 +127,11 @@
 }
 else
 {
-    <div class="row g-3">
+    <div class="row g-3 mb-4">
         @foreach (var item in Model.Series)
         {
             var progress = item.ProgressPercentage;
-            <div class="col-sm-6 col-lg-4">
+            <div class="col-sm-6 col-lg-4 reveal">
                 <article class="content-card h-100">
                     <div class="content-cover" style="background-image:url('@(string.IsNullOrWhiteSpace(item.BackdropUrl) ? item.PosterUrl : item.BackdropUrl)')">
                         <div class="content-overlay"></div>
@@ -175,7 +179,7 @@ else
         }
     </div>
 
-    <nav class="mt-4">
+    <nav class="mt-4 reveal">
         <ul class="pagination justify-content-center">
             <li class="page-item @(Model.HasPreviousPage ? "" : "disabled")">
                 <a class="page-link" href="@Model.BuildPageUrl(Model.Page - 1)">Precedent</a>
@@ -190,3 +194,70 @@ else
     </nav>
 }
 
+@section Scripts
+{
+    <script>
+        (() => {
+            const input = document.getElementById('librarySearchInput');
+            const box = document.getElementById('librarySearchSuggestions');
+            if (!input || !box) return;
+
+            let debounceId = null;
+
+            const hideBox = () => {
+                box.classList.add('d-none');
+                box.innerHTML = '';
+            };
+
+            const renderSuggestions = (items) => {
+                if (!items.length) {
+                    hideBox();
+                    return;
+                }
+
+                box.innerHTML = items.map(item => `
+                    <a class="suggestion-item" href="/Series/Details/${item.id}">
+                        <span class="suggestion-dot"></span>
+                        <span class="suggestion-body">
+                            <strong>${item.title}</strong>
+                            <small>${item.subtitle}</small>
+                        </span>
+                    </a>
+                `).join('');
+                box.classList.remove('d-none');
+            };
+
+            const search = async () => {
+                const q = input.value.trim();
+                if (q.length < 2) {
+                    hideBox();
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/Series/SearchSuggestions?query=${encodeURIComponent(q)}`);
+                    if (!response.ok) {
+                        hideBox();
+                        return;
+                    }
+
+                    const items = await response.json();
+                    renderSuggestions(items);
+                } catch {
+                    hideBox();
+                }
+            };
+
+            input.addEventListener('input', () => {
+                clearTimeout(debounceId);
+                debounceId = setTimeout(search, 180);
+            });
+
+            document.addEventListener('click', (event) => {
+                if (!box.contains(event.target) && event.target !== input) {
+                    hideBox();
+                }
+            });
+        })();
+    </script>
+}

@@ -1,23 +1,44 @@
-﻿@model HomeIndexViewModel
+@model HomeIndexViewModel
 @{
     ViewData["Title"] = "Accueil";
+
+    static string ResolveCover(string? primary, string? fallback = null)
+    {
+        return !string.IsNullOrWhiteSpace(primary)
+            ? primary
+            : fallback ?? string.Empty;
+    }
 }
 
-<section class="home-hero rounded-4 p-4 p-md-5 mb-4">
+<section class="home-hero rounded-4 p-4 p-md-5 mb-4 reveal premium-panel">
     <div class="row g-4 align-items-center">
         <div class="col-lg-7">
-            <p class="hero-kicker mb-2">EXPERIENCE APPLE GLASS</p>
-            <h1 class="hero-title mb-3">
-                Suivi moderne de
+            <p class="hero-kicker mb-2">ZERRA TV</p>
+            <h1 class="hero-title mb-2">
+                Suivez vos
                 <span class="hero-title-accent">series, films et anime</span>
             </h1>
-            <p class="hero-subtitle mb-4">Une interface elegante, rapide et prete pour un usage reel.</p>
+            <p class="hero-subtitle mb-4">Une experience fluide, claire et elegante.</p>
 
-            <div class="d-flex flex-wrap gap-2 mb-4">
+            <form method="get" asp-controller="Series" asp-action="Index" class="home-search mb-3" autocomplete="off">
+                <div class="home-search-group">
+                    <input
+                        id="homeSearchInput"
+                        type="text"
+                        name="searchTerm"
+                        class="home-search-input"
+                        placeholder="Rechercher un titre..."
+                        aria-label="Rechercher un titre" />
+                    <button type="submit" class="btn btn-primary home-search-btn">Rechercher</button>
+                </div>
+                <div id="homeSearchSuggestions" class="search-suggestions d-none" role="listbox" aria-label="Suggestions"></div>
+            </form>
+
+            <div class="d-flex flex-wrap gap-2 mb-3">
                 @if (Model.IsAuthenticated)
                 {
-                    <a class="btn btn-primary btn-lg px-4" asp-controller="Series" asp-action="Dashboard">Ouvrir le tableau de bord</a>
-                    <a class="btn btn-outline-secondary btn-lg px-4" asp-controller="Series" asp-action="Index">Voir ma bibliotheque</a>
+                    <a class="btn btn-primary btn-lg px-4" asp-controller="Series" asp-action="Dashboard">Tableau de bord</a>
+                    <a class="btn btn-outline-secondary btn-lg px-4" asp-controller="Series" asp-action="Index">Ma bibliotheque</a>
                 }
                 else
                 {
@@ -25,28 +46,21 @@
                     <a class="btn btn-outline-secondary btn-lg px-4" asp-controller="Account" asp-action="Login">Se connecter</a>
                 }
             </div>
-
-            <div class="hero-tags">
-                <span class="hero-tag">A regarder ensuite</span>
-                <span class="hero-tag">Sorties de la semaine</span>
-                <span class="hero-tag">Statistiques claires</span>
-                <span class="hero-tag">Mode sombre</span>
-            </div>
         </div>
         <div class="col-lg-5">
             <aside class="holo-panel orbit-panel">
-                <h2 class="h6 text-uppercase mb-3">Apercu rapide</h2>
+                <h2 class="h6 text-uppercase mb-3">Apercu recent</h2>
                 <div class="signal-list">
                     <div class="signal-item">
-                        <span>Tendance</span>
-                        <strong>@Model.TrendingMovies.Count film(s) mis en avant</strong>
+                        <span>Tendances</span>
+                        <strong>@Model.TrendingMovies.Count contenu(s) en avant</strong>
                     </div>
                     <div class="signal-item">
-                        <span>Recommandations</span>
-                        <strong>@Model.RecommendedMovies.Count suggestion(s)</strong>
+                        <span>Suggestions pour vous</span>
+                        <strong>@Model.BecauseYouLikedMovies.Count proposition(s)</strong>
                     </div>
                     <div class="signal-item">
-                        <span>Genres</span>
+                        <span>Genres populaires</span>
                         <strong>@Model.GenreCards.Count categorie(s)</strong>
                     </div>
                 </div>
@@ -55,16 +69,57 @@
     </div>
 </section>
 
-<section class="mb-4">
+@if (Model.IsAuthenticated)
+{
+    <section class="mb-4 reveal premium-section">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h2 class="h4 mb-0">Continuer le visionnage</h2>
+            <a asp-controller="Series" asp-action="Dashboard" class="btn btn-outline-secondary btn-sm">Ouvrir le tableau de bord</a>
+        </div>
+        @if (!Model.ContinueWatching.Any())
+        {
+            <div class="card border-0">
+                <div class="card-body text-center p-4">
+                    <p class="mb-0 text-muted">Aucun contenu en cours pour le moment.</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="row g-3">
+                @foreach (var item in Model.ContinueWatching)
+                {
+                    <div class="col-sm-6 col-xl-3">
+                        <article class="content-card h-100">
+                            <div class="content-cover lazy-bg" data-bg="@ResolveCover(item.BackdropUrl, item.PosterUrl)">
+                                <div class="content-overlay"></div>
+                            </div>
+                            <div class="p-3">
+                                <h3 class="h6 mb-1 clamp-2">@item.Title</h3>
+                                <p class="text-muted small mb-2">@item.WatchedEpisodes/@item.TotalEpisodes episodes</p>
+                                <div class="progress mb-3">
+                                    <div class="progress-bar" style="width:@item.ProgressPercentage%;">@item.ProgressPercentage%</div>
+                                </div>
+                                <a asp-controller="Series" asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-primary w-100">Reprendre</a>
+                            </div>
+                        </article>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+}
+
+<section class="mb-4 reveal premium-section">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-        <h2 class="h4 mb-0">Films tendances</h2>
+        <h2 class="h4 mb-0">Tendances du moment</h2>
         <a asp-controller="Series" asp-action="Index" class="btn btn-outline-secondary btn-sm">Voir toute la bibliotheque</a>
     </div>
     @if (!Model.TrendingMovies.Any())
     {
         <div class="card border-0">
             <div class="card-body text-center p-4">
-                <p class="mb-0 text-muted">Aucun film tendance pour le moment.</p>
+                <p class="mb-0 text-muted">Aucune tendance disponible pour le moment.</p>
             </div>
         </div>
     }
@@ -76,7 +131,7 @@
                 <div class="col-6 col-md-4 col-xl-2">
                     <article class="trend-card h-100">
                         <a asp-controller="Series" asp-action="Details" asp-route-id="@item.Id" class="text-decoration-none d-block h-100">
-                            <div class="trend-card-media" style="background-image:url('@(item.PosterUrl ?? item.BackdropUrl)')"></div>
+                            <div class="trend-card-media lazy-bg" data-bg="@ResolveCover(item.PosterUrl, item.BackdropUrl)"></div>
                             <div class="p-2 p-md-3">
                                 <h3 class="h6 mb-1 clamp-2">@item.Title</h3>
                                 <p class="small text-muted mb-2">@item.Genre</p>
@@ -93,35 +148,69 @@
     }
 </section>
 
-<section class="mb-4">
+<section class="mb-4 reveal premium-section">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-        <h2 class="h4 mb-0">Recommandations pour vous</h2>
-        @if (Model.IsAuthenticated)
-        {
-            <a asp-controller="Series" asp-action="Dashboard" class="btn btn-outline-secondary btn-sm">Ouvrir le tableau de bord</a>
-        }
-        else
-        {
-            <a asp-controller="Account" asp-action="Register" class="btn btn-outline-secondary btn-sm">Creer un compte</a>
-        }
+        <h2 class="h4 mb-0">Top 10 aujourd'hui</h2>
+        <a asp-controller="Series" asp-action="Index" class="btn btn-outline-secondary btn-sm">Explorer</a>
     </div>
-    @if (!Model.RecommendedMovies.Any())
+    @if (!Model.TopTenToday.Any())
     {
         <div class="card border-0">
             <div class="card-body text-center p-4">
-                <p class="mb-0 text-muted">Aucune recommandation disponible pour l'instant.</p>
+                <p class="mb-0 text-muted">Le top du jour est en preparation.</p>
             </div>
         </div>
     }
     else
     {
         <div class="row g-3">
-            @foreach (var item in Model.RecommendedMovies)
+            @for (var i = 0; i < Model.TopTenToday.Count; i++)
+            {
+                var item = Model.TopTenToday[i];
+                <div class="col-6 col-md-4 col-xl-3">
+                    <article class="trend-card top-ten-card h-100">
+                        <a asp-controller="Series" asp-action="Details" asp-route-id="@item.Id" class="text-decoration-none d-block h-100">
+                            <div class="trend-card-media lazy-bg" data-bg="@ResolveCover(item.PosterUrl, item.BackdropUrl)">
+                                <span class="top-rank-badge">#@(i + 1)</span>
+                            </div>
+                            <div class="p-2 p-md-3">
+                                <h3 class="h6 mb-1 clamp-2">@item.Title</h3>
+                                <p class="small text-muted mb-2">@item.ContentType - @item.Genre</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="badge status-badge">@item.Status</span>
+                                    <small class="text-muted">@item.PersonalRating.ToString("0.0")/10</small>
+                                </div>
+                            </div>
+                        </a>
+                    </article>
+                </div>
+            }
+        </div>
+    }
+</section>
+
+<section class="mb-4 reveal premium-section">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <h2 class="h4 mb-0">@Model.BecauseYouLikedTitle</h2>
+        <a asp-controller="Series" asp-action="Index" class="btn btn-outline-secondary btn-sm">Voir plus</a>
+    </div>
+    @if (!Model.BecauseYouLikedMovies.Any())
+    {
+        <div class="card border-0">
+            <div class="card-body text-center p-4">
+                <p class="mb-0 text-muted">Aucune suggestion disponible pour l'instant.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var item in Model.BecauseYouLikedMovies)
             {
                 <div class="col-6 col-md-4 col-xl-2">
                     <article class="trend-card h-100">
                         <a asp-controller="Series" asp-action="Details" asp-route-id="@item.Id" class="text-decoration-none d-block h-100">
-                            <div class="trend-card-media" style="background-image:url('@(item.BackdropUrl ?? item.PosterUrl)')"></div>
+                            <div class="trend-card-media lazy-bg" data-bg="@ResolveCover(item.BackdropUrl, item.PosterUrl)"></div>
                             <div class="p-2 p-md-3">
                                 <h3 class="h6 mb-1 clamp-2">@item.Title</h3>
                                 <p class="small text-muted mb-2">@item.StreamingPlatform</p>
@@ -138,15 +227,142 @@
     }
 </section>
 
-<section class="mb-2">
-    <h2 class="h4 mb-3">Parcourir par genre</h2>
+<section class="mb-4 reveal premium-section">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <h2 class="h4 mb-0">Nouveautes</h2>
+        <a asp-controller="Series" asp-action="Calendar" class="btn btn-outline-secondary btn-sm">Sorties a venir</a>
+    </div>
+    @if (!Model.NewReleaseMovies.Any())
+    {
+        <div class="card border-0">
+            <div class="card-body text-center p-4">
+                <p class="mb-0 text-muted">Aucune nouveaute pour le moment.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var item in Model.NewReleaseMovies)
+            {
+                <div class="col-6 col-md-4 col-xl-2">
+                    <article class="trend-card h-100">
+                        <a asp-controller="Series" asp-action="Details" asp-route-id="@item.Id" class="text-decoration-none d-block h-100">
+                            <div class="trend-card-media lazy-bg" data-bg="@ResolveCover(item.PosterUrl, item.BackdropUrl)"></div>
+                            <div class="p-2 p-md-3">
+                                <h3 class="h6 mb-1 clamp-2">@item.Title</h3>
+                                <p class="small text-muted mb-2">@item.ReleaseDate?.ToString("dd/MM/yyyy")</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="badge status-badge">@item.Status</span>
+                                    <small class="text-muted">@item.PersonalRating.ToString("0.0")/10</small>
+                                </div>
+                            </div>
+                        </a>
+                    </article>
+                </div>
+            }
+        </div>
+    }
+</section>
+
+<section class="mb-2 reveal premium-section">
+    <h2 class="h4 mb-3">Genres populaires</h2>
     <div class="genre-grid">
         @foreach (var card in Model.GenreCards)
         {
-            <a asp-controller="Series" asp-action="Index" asp-route-genre="@card.Genre" class="genre-tile text-decoration-none" style="background-image:url('@card.CoverUrl')">
+            <a asp-controller="Series" asp-action="Index" asp-route-genre="@card.Genre" class="genre-tile text-decoration-none lazy-bg" data-bg="@card.CoverUrl">
                 <span>@card.Genre</span>
             </a>
         }
     </div>
 </section>
 
+@section Scripts
+{
+    <script>
+        (() => {
+            const input = document.getElementById('homeSearchInput');
+            const box = document.getElementById('homeSearchSuggestions');
+            if (!input || !box) return;
+
+            let debounceId = null;
+
+            const hideBox = () => {
+                box.classList.add('d-none');
+                box.innerHTML = '';
+            };
+
+            const renderSuggestions = (items) => {
+                if (!items.length) {
+                    hideBox();
+                    return;
+                }
+
+                box.innerHTML = items.map(item => `
+                    <a class="suggestion-item" href="/Series/Details/${item.id}">
+                        <span class="suggestion-dot"></span>
+                        <span class="suggestion-body">
+                            <strong>${item.title}</strong>
+                            <small>${item.subtitle}</small>
+                        </span>
+                    </a>
+                `).join('');
+                box.classList.remove('d-none');
+            };
+
+            const search = async () => {
+                const q = input.value.trim();
+                if (q.length < 2) {
+                    hideBox();
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/Home/SearchSuggestions?query=${encodeURIComponent(q)}`);
+                    if (!response.ok) {
+                        hideBox();
+                        return;
+                    }
+
+                    const items = await response.json();
+                    renderSuggestions(items);
+                } catch {
+                    hideBox();
+                }
+            };
+
+            input.addEventListener('input', () => {
+                clearTimeout(debounceId);
+                debounceId = setTimeout(search, 180);
+            });
+
+            document.addEventListener('click', (event) => {
+                if (!box.contains(event.target) && event.target !== input) {
+                    hideBox();
+                }
+            });
+
+            const lazyNodes = document.querySelectorAll('.lazy-bg[data-bg]');
+            const applyBackground = (node) => {
+                const url = node.dataset.bg;
+                if (!url) return;
+                node.style.backgroundImage = `url('${url.replaceAll("'", "\\'")}')`;
+                node.classList.add('lazy-bg-loaded');
+            };
+
+            if ('IntersectionObserver' in window) {
+                const bgObserver = new IntersectionObserver((entries, observer) => {
+                    for (const entry of entries) {
+                        if (!entry.isIntersecting) continue;
+                        applyBackground(entry.target);
+                        observer.unobserve(entry.target);
+                    }
+                }, { rootMargin: '180px 0px' });
+
+                lazyNodes.forEach((node) => bgObserver.observe(node));
+            } else {
+                lazyNodes.forEach(applyBackground);
+            }
+        })();
+    </script>
+}

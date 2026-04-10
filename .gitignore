@@ -4,3 +4,7 @@ obj/
 *.sqlite
 *.log
 .env
+red
+SuiviSeriesTV/App_Data/DataProtection-Keys/
+SuiviSeriesTV/wwwroot/uploads/
+SuiviSeriesTV/suiviseriestv.backup_*.db

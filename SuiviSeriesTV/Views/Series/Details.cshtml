@@ -1,21 +1,30 @@
-﻿@model Serie
+@model SeriesDetailsViewModel
 @{
     ViewData["Title"] = "Fiche contenu";
+    var item = Model.Item;
 }
 
-<section class="detail-hero rounded-4 mb-4" style="background-image:url('@(Model.BackdropUrl ?? Model.PosterUrl)')">
+<section class="detail-hero rounded-4 mb-4 reveal premium-panel" style="background-image:url('@(item.BackdropUrl ?? item.PosterUrl)')">
     <div class="detail-hero-overlay rounded-4 p-4 p-md-5">
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
             <div>
-                <span class="badge rounded-pill bg-light text-dark mb-2">@Model.ContentType</span>
-                <h1 class="display-6 text-white fw-bold mb-2">@Model.Title</h1>
-                <p class="text-white-50 mb-0">@Model.Genre - @Model.StreamingPlatform</p>
+                <div class="d-flex flex-wrap gap-2 mb-2">
+                    <span class="badge rounded-pill bg-light text-dark">@item.ContentType</span>
+                    <span class="badge rounded-pill status-badge">@item.Status</span>
+                    @if (item.IsFavorite)
+                    {
+                        <span class="badge rounded-pill text-bg-warning">Favori</span>
+                    }
+                </div>
+                <h1 class="display-6 text-white fw-bold mb-2">@item.Title</h1>
+                <p class="text-white-50 mb-1">@item.Genre</p>
+                <p class="text-white-50 mb-0">@item.StreamingPlatform</p>
             </div>
-            <div class="d-flex gap-2">
-                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-light">Modifier</a>
+            <div class="d-flex gap-2 flex-wrap">
+                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-light">Modifier</a>
                 <form asp-action="MarkAsWatched" method="post" class="d-inline">
                     @Html.AntiForgeryToken()
-                    <input type="hidden" name="id" value="@Model.Id" />
+                    <input type="hidden" name="id" value="@item.Id" />
                     <button type="submit" class="btn btn-success">Marquer comme vu</button>
                 </form>
                 <a asp-action="Index" class="btn btn-outline-light">Retour</a>
@@ -24,23 +33,19 @@
     </div>
 </section>
 
-<div class="row g-4">
+<div class="row g-4 reveal">
     <div class="col-lg-4">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
-                @if (!string.IsNullOrWhiteSpace(Model.PosterUrl))
+                @if (!string.IsNullOrWhiteSpace(item.PosterUrl))
                 {
-                    <img src="@Model.PosterUrl" class="img-fluid rounded-3 mb-3" alt="Affiche @Model.Title" />
+                    <img src="@item.PosterUrl" class="img-fluid rounded-3 mb-3" alt="Affiche @item.Title" />
                 }
-                <div class="d-flex flex-wrap gap-2 mb-3">
-                    <span class="badge text-bg-dark">@Model.Status</span>
-                    @if (Model.IsFavorite)
-                    {
-                        <span class="badge text-bg-warning">Favori</span>
-                    }
-                    <span class="badge text-bg-secondary">@Model.PersonalRating.ToString("0.0")/10</span>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted">Note</span>
+                    <span class="rating-circle">@item.PersonalRating.ToString("0.0")</span>
                 </div>
-                <p class="text-muted mb-0">@Model.Description</p>
+                <p class="text-muted mb-0">@item.Description</p>
             </div>
         </div>
     </div>
@@ -48,32 +53,67 @@
     <div class="col-lg-8">
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body">
-                <h2 class="h5 mb-3">Progression</h2>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 id="progress" class="h5 mb-0">Progression</h2>
+                    <a asp-action="Dashboard" class="btn btn-sm btn-outline-secondary">Reprendre</a>
+                </div>
                 <div class="d-flex justify-content-between small text-muted mb-2">
-                    <span>@Model.WatchedEpisodes / @Model.TotalEpisodes episode(s)</span>
-                    <span>@Model.ProgressPercentage%</span>
+                    <span>@item.WatchedEpisodes / @item.TotalEpisodes episode(s)</span>
+                    <span>@item.ProgressPercentage%</span>
                 </div>
                 <div class="progress mb-3">
-                    <div class="progress-bar" style="width:@Model.ProgressPercentage%;">@Model.ProgressPercentage%</div>
+                    <div class="progress-bar" style="width:@item.ProgressPercentage%;">@item.ProgressPercentage%</div>
                 </div>
                 <div class="row g-3">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="detail-cell">
                             <span>Saisons</span>
-                            <strong>@Model.SeasonsCount</strong>
+                            <strong>@item.SeasonsCount</strong>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="detail-cell">
-                            <span>Derniere saison vue</span>
-                            <strong>@Model.LastWatchedSeason</strong>
+                            <span>Derniere saison</span>
+                            <strong>@item.LastWatchedSeason</strong>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="detail-cell">
-                            <span>Dernier episode vu</span>
-                            <strong>@Model.LastWatchedEpisode</strong>
+                            <span>Dernier episode</span>
+                            <strong>@item.LastWatchedEpisode</strong>
                         </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="detail-cell">
+                            <span>Duree</span>
+                            <strong>@(item.AverageEpisodeRuntimeMinutes?.ToString() ?? Model.Tmdb?.RuntimeMinutes?.ToString() ?? "-") min</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Cinematique</h2>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="detail-cell"><span>Date d'ajout</span><strong>@item.DateAdded.ToString("dd/MM/yyyy")</strong></div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="detail-cell"><span>Date de sortie</span><strong>@(item.ReleaseDate?.ToString("dd/MM/yyyy") ?? "-")</strong></div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="detail-cell"><span>Prochaine sortie</span><strong>@(item.NextReleaseDate?.ToString("dd/MM/yyyy") ?? "-")</strong></div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="detail-cell">
+                            <span>Genres TMDB</span>
+                            <strong>@(Model.Tmdb?.Genres.Any() == true ? string.Join(", ", Model.Tmdb.Genres) : item.Genre)</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="detail-cell"><span>Commentaire</span><strong>@(string.IsNullOrWhiteSpace(item.PersonalComment) ? "-" : item.PersonalComment)</strong></div>
                     </div>
                 </div>
             </div>
@@ -81,22 +121,41 @@
 
         <div class="card border-0 shadow-sm">
             <div class="card-body">
-                <h2 class="h5 mb-3">Informations complementaires</h2>
+                <h2 class="h5 mb-3">Trailer et casting</h2>
                 <div class="row g-3">
-                    <div class="col-md-4">
-                        <div class="detail-cell"><span>Date d'ajout</span><strong>@Model.DateAdded.ToString("dd/MM/yyyy")</strong></div>
+                    <div class="col-lg-7">
+                        @if (!string.IsNullOrWhiteSpace(Model.Tmdb?.TrailerUrl))
+                        {
+                            <button type="button"
+                                    class="btn btn-primary w-100"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#trailerModal">
+                                Lire la bande-annonce
+                            </button>
+                            @if (!string.IsNullOrWhiteSpace(Model.Tmdb?.TrailerName))
+                            {
+                                <p class="small text-muted mt-2 mb-0">@Model.Tmdb.TrailerName</p>
+                            }
+                        }
+                        else
+                        {
+                            <p class="text-muted mb-0">Bande-annonce indisponible pour ce contenu.</p>
+                        }
                     </div>
-                    <div class="col-md-4">
-                        <div class="detail-cell"><span>Date de sortie</span><strong>@(Model.ReleaseDate?.ToString("dd/MM/yyyy") ?? "-")</strong></div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="detail-cell"><span>Prochaine sortie</span><strong>@(Model.NextReleaseDate?.ToString("dd/MM/yyyy") ?? "-")</strong></div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="detail-cell"><span>Duree moyenne</span><strong>@(Model.AverageEpisodeRuntimeMinutes?.ToString() ?? "-") min</strong></div>
-                    </div>
-                    <div class="col-md-8">
-                        <div class="detail-cell"><span>Commentaire personnel</span><strong>@(string.IsNullOrWhiteSpace(Model.PersonalComment) ? "-" : Model.PersonalComment)</strong></div>
+                    <div class="col-lg-5">
+                        @if (Model.Tmdb?.Cast.Any() == true)
+                        {
+                            <ul class="list-group list-group-flush">
+                                @foreach (var actor in Model.Tmdb.Cast)
+                                {
+                                    <li class="list-group-item px-0">@actor</li>
+                                }
+                            </ul>
+                        }
+                        else
+                        {
+                            <p class="text-muted mb-0">Casting non disponible.</p>
+                        }
                     </div>
                 </div>
             </div>
@@ -104,3 +163,63 @@
     </div>
 </div>
 
+@if (!string.IsNullOrWhiteSpace(Model.Tmdb?.TrailerUrl))
+{
+    <div class="modal fade" id="trailerModal" tabindex="-1" aria-labelledby="trailerModalLabel" aria-hidden="true" data-trailer-url="@Model.Tmdb.TrailerUrl">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content trailer-modal-content">
+                <div class="modal-header border-0">
+                    <h2 class="modal-title h5 mb-0" id="trailerModalLabel">Bande-annonce - @item.Title</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body pt-0">
+                    <div class="ratio ratio-16x9 trailer-frame-shell">
+                        <iframe id="trailerFrame" src="" title="Bande-annonce" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts
+{
+    <script>
+        (() => {
+            const modal = document.getElementById('trailerModal');
+            if (!modal) return;
+
+            const frame = document.getElementById('trailerFrame');
+            const trailerUrl = modal.dataset.trailerUrl || '';
+
+            const toEmbedUrl = (url) => {
+                if (!url) return '';
+                if (url.includes('/embed/')) return `${url}${url.includes('?') ? '&' : '?'}autoplay=1&rel=0`;
+
+                const watchMatch = url.match(/[?&]v=([^&]+)/i);
+                if (watchMatch && watchMatch[1]) {
+                    return `https://www.youtube.com/embed/${watchMatch[1]}?autoplay=1&rel=0`;
+                }
+
+                const shortMatch = url.match(/youtu\.be\/([^?&]+)/i);
+                if (shortMatch && shortMatch[1]) {
+                    return `https://www.youtube.com/embed/${shortMatch[1]}?autoplay=1&rel=0`;
+                }
+
+                return url;
+            };
+
+            modal.addEventListener('shown.bs.modal', () => {
+                if (frame) {
+                    frame.src = toEmbedUrl(trailerUrl);
+                }
+            });
+
+            modal.addEventListener('hidden.bs.modal', () => {
+                if (frame) {
+                    frame.src = '';
+                }
+            });
+        })();
+    </script>
+}

@@ -85,6 +85,9 @@ public class Serie : IValidatableObject
     [Display(Name = "Favori")]
     public bool IsFavorite { get; set; }
 
+    [Display(Name = "Ordre dans ma liste")]
+    public int? WatchlistOrder { get; set; }
+
     [StringLength(1200, ErrorMessage = "Le commentaire ne doit pas depasser 1200 caracteres.")]
     [Display(Name = "Commentaire personnel")]
     public string? PersonalComment { get; set; }

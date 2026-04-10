@@ -1,111 +1,278 @@
-﻿@model UserDashboardViewModel
+@model UserDashboardViewModel
+@using System.Text.Json
 @{
-    ViewData["Title"] = "Tableau de bord utilisateur";
+    ViewData["Title"] = "Profil";
+    var weeklyLabelsJson = JsonSerializer.Serialize(Model.WeeklyLabels);
+    var weeklyValuesJson = JsonSerializer.Serialize(Model.WeeklyActivityValues);
+    var mixLabelsJson = JsonSerializer.Serialize(Model.ContentMixLabels);
+    var mixValuesJson = JsonSerializer.Serialize(Model.ContentMixValues);
+}
+@functions {
+    private static string ResolveBadgeIcon(string key) => key?.ToLowerInvariant() switch
+    {
+        "spark" => "bi-stars",
+        "stack" => "bi-collection-play",
+        "bolt" => "bi-lightning-charge-fill",
+        "star" => "bi-star-fill",
+        "shield" => "bi-shield-check",
+        "heart" => "bi-heart-fill",
+        "eye" => "bi-eye-fill",
+        "check" => "bi-check2-circle",
+        _ => "bi-patch-check"
+    };
 }
 
-<section class="hero-section p-4 rounded-4 mb-4">
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <div>
-            <h1 class="h3 mb-1">Tableau de bord utilisateur</h1>
-            <p class="text-muted mb-0">Vue rapide de votre progression et de vos contenus recents.</p>
+<section class="home-hero rounded-4 p-4 p-md-5 mb-4 reveal premium-panel profile-hero">
+    <div class="row g-4 align-items-center">
+        <div class="col-lg-8">
+            <p class="hero-kicker mb-2">PROFIL UTILISATEUR</p>
+            <h1 class="hero-title mb-2">Bonjour, <span class="hero-title-accent">@Model.DisplayName</span></h1>
+            <p class="hero-subtitle mb-3">@Model.Email | Niveau @Model.ProfileTier</p>
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <a asp-controller="Series" asp-action="Dashboard" class="btn btn-primary">Centre de pilotage</a>
+                <a asp-controller="Series" asp-action="Index" class="btn btn-outline-secondary">Ma bibliotheque</a>
+            </div>
+            <div class="hero-tags">
+                <span class="hero-tag">Niveau: @Model.ProfileTier</span>
+                <span class="hero-tag">Membre depuis @Model.MemberSinceUtc.ToString("MM/yyyy")</span>
+                <span class="hero-tag">Completion: @Model.CompletionRate%</span>
+            </div>
         </div>
-        <a asp-controller="Series" asp-action="Create" class="btn btn-primary">Ajouter une serie</a>
+        <div class="col-lg-4">
+            <div class="profile-score-card">
+                <span>Score global</span>
+                <strong>@Model.AverageRating.ToString("0.00") / 10</strong>
+                <small>@Model.FavoriteItems favoris | @Model.EstimatedRemainingHours h restantes</small>
+            </div>
+        </div>
     </div>
 </section>
 
-<div class="row g-3 mb-4">
-    <div class="col-6 col-lg-3">
-        <div class="card stat-card border-0 shadow-sm h-100">
-            <div class="card-body">
-                <p class="text-uppercase text-muted small mb-1">Total</p>
-                <h2 class="display-6 mb-0">@Model.TotalSeries</h2>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-lg-3">
-        <div class="card stat-card border-0 shadow-sm h-100">
-            <div class="card-body">
-                <p class="text-uppercase text-muted small mb-1">Termine</p>
-                <h2 class="display-6 mb-0">@Model.CompletedSeries</h2>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-lg-3">
-        <div class="card stat-card border-0 shadow-sm h-100">
-            <div class="card-body">
-                <p class="text-uppercase text-muted small mb-1">En cours</p>
-                <h2 class="display-6 mb-0">@Model.InProgressSeries</h2>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-lg-3">
-        <div class="card stat-card border-0 shadow-sm h-100">
-            <div class="card-body">
-                <p class="text-uppercase text-muted small mb-1">A voir</p>
-                <h2 class="display-6 mb-0">@Model.ToWatchSeries</h2>
-            </div>
-        </div>
-    </div>
+<div class="row g-3 mb-4 reveal premium-section">
+    <div class="col-6 col-md-4 col-xl-2"><div class="mini-stat-card"><span>Total</span><strong>@Model.TotalSeries</strong></div></div>
+    <div class="col-6 col-md-4 col-xl-2"><div class="mini-stat-card"><span>Termine</span><strong>@Model.CompletedSeries</strong></div></div>
+    <div class="col-6 col-md-4 col-xl-2"><div class="mini-stat-card"><span>En cours</span><strong>@Model.InProgressSeries</strong></div></div>
+    <div class="col-6 col-md-4 col-xl-2"><div class="mini-stat-card"><span>A voir</span><strong>@Model.ToWatchSeries</strong></div></div>
+    <div class="col-6 col-md-4 col-xl-2"><div class="mini-stat-card"><span>Favoris</span><strong>@Model.FavoriteItems</strong></div></div>
+    <div class="col-6 col-md-4 col-xl-2"><div class="mini-stat-card"><span>Taux fini</span><strong>@Model.CompletionRate%</strong></div></div>
 </div>
 
-<div class="card border-0 shadow-sm mb-4">
-    <div class="card-body">
-        <h3 class="h5 mb-3">Moyenne de vos notes</h3>
-        <div class="d-flex align-items-center gap-3">
-            <div class="rating-circle">@Model.AverageRating.ToString("0.00")</div>
-            <p class="mb-0">Votre moyenne actuelle est de <strong>@Model.AverageRating.ToString("0.00") / 10</strong>.</p>
+<div class="row g-4 mb-4 reveal premium-section">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm h-100 premium-panel">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Badges progression</h2>
+                <div class="profile-badge-grid">
+                    @foreach (var badge in Model.Badges)
+                    {
+                        <article class="profile-badge-card @(badge.Unlocked ? "is-unlocked" : "is-locked")">
+                            <span class="profile-badge-icon" aria-hidden="true">
+                                <i class="bi @ResolveBadgeIcon(badge.IconKey)"></i>
+                            </span>
+                            <div class="profile-badge-body">
+                                <strong>@badge.Title</strong>
+                                <small>@badge.Description</small>
+                            </div>
+                            <span class="profile-badge-state">@(badge.Unlocked ? "Debloque" : "En cours")</span>
+                        </article>
+                    }
+                </div>
+            </div>
         </div>
     </div>
-</div>
-
-<div class="card border-0 shadow-sm">
-    <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h3 class="h5 mb-0">Contenus recents</h3>
-            <a asp-controller="Series" asp-action="Index" class="btn btn-sm btn-outline-secondary">Voir tout</a>
-        </div>
-
-        @if (!Model.RecentSeries.Any())
-        {
-            <div class="alert alert-info mb-0">Aucun contenu pour le moment. Commencez par en ajouter un.</div>
-        }
-        else
-        {
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Titre</th>
-                            <th>Genre</th>
-                            <th>Statut</th>
-                            <th class="text-end">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var serie in Model.RecentSeries)
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm h-100 premium-panel">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Genres favoris</h2>
+                @if (!Model.TopGenres.Any())
+                {
+                    <p class="text-muted mb-0">Ajoutez des contenus pour voir vos preferences.</p>
+                }
+                else
+                {
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        @foreach (var genre in Model.TopGenres)
                         {
-                            <tr>
-                                <td>@serie.Title</td>
-                                <td>@serie.Genre</td>
-                                <td>
-                                    @(serie.Status switch
-                                    {
-                                        SerieStatus.Watchlist => "A voir",
-                                        SerieStatus.EnCours => "En cours",
-                                        SerieStatus.Termine => "Termine",
-                                        SerieStatus.Abandonne => "Abandonne",
-                                        _ => serie.Status.ToString()
-                                    })
-                                </td>
-                                <td class="text-end">
-                                    <a asp-controller="Series" asp-action="Details" asp-route-id="@serie.Id" class="btn btn-sm btn-outline-primary">Voir</a>
-                                </td>
-                            </tr>
+                            <span class="hero-tag">@genre.Genre (@genre.Count)</span>
                         }
-                    </tbody>
-                </table>
+                    </div>
+                }
+                <a asp-controller="Series" asp-action="Index" class="btn btn-outline-secondary btn-sm">Explorer par genre</a>
             </div>
-        }
+        </div>
     </div>
 </div>
 
+<div class="row g-4 mb-4 reveal premium-section">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100 premium-panel">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Rythme hebdomadaire</h2>
+                <canvas id="weeklyActivityChart" height="220"></canvas>
+                <p class="text-muted small mb-0 mt-2">Nombre de contenus ajoutes par jour (7 derniers jours).</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100 premium-panel">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Mix de contenus</h2>
+                <canvas id="contentMixChart" height="220"></canvas>
+                <p class="text-muted small mb-0 mt-2">Repartition entre series, films et anime.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="mb-4 reveal premium-section">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <h2 class="h4 mb-0">Mes favoris</h2>
+        <a asp-controller="Series" asp-action="Index" asp-route-favoritesOnly="true" class="btn btn-outline-secondary btn-sm">Voir tous les favoris</a>
+    </div>
+    @if (!Model.FavoriteSeries.Any())
+    {
+        <div class="card border-0 shadow-sm premium-panel">
+            <div class="card-body text-center p-4">
+                <p class="mb-0 text-muted">Aucun favori pour le moment.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var item in Model.FavoriteSeries)
+            {
+                <div class="col-6 col-md-4 col-xl-2">
+                    <article class="trend-card h-100">
+                        <a asp-controller="Series" asp-action="Details" asp-route-id="@item.Id" class="text-decoration-none d-block h-100">
+                            <div class="trend-card-media" style="background-image:url('@(item.PosterUrl ?? item.BackdropUrl)')"></div>
+                            <div class="p-2 p-md-3">
+                                <h3 class="h6 mb-1 clamp-2">@item.Title</h3>
+                                <p class="small text-muted mb-2">@item.Genre</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="badge status-badge">@item.Status</span>
+                                    <small class="text-muted">@item.PersonalRating.ToString("0.0")/10</small>
+                                </div>
+                            </div>
+                        </a>
+                    </article>
+                </div>
+            }
+        </div>
+    }
+</section>
+
+<section class="reveal premium-section">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <h2 class="h4 mb-0">Ajoutes recents</h2>
+        <a asp-controller="Series" asp-action="Index" class="btn btn-outline-secondary btn-sm">Voir la bibliotheque</a>
+    </div>
+    @if (!Model.RecentSeries.Any())
+    {
+        <div class="card border-0 shadow-sm premium-panel">
+            <div class="card-body text-center p-4">
+                <p class="mb-0 text-muted">Votre bibliotheque est vide pour l'instant.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var item in Model.RecentSeries)
+            {
+                <div class="col-6 col-md-4 col-xl-3">
+                    <article class="content-card h-100">
+                        <div class="content-cover" style="background-image:url('@(string.IsNullOrWhiteSpace(item.BackdropUrl) ? item.PosterUrl : item.BackdropUrl)')">
+                            <div class="content-overlay"></div>
+                        </div>
+                        <div class="p-3">
+                            <h3 class="h6 mb-1 clamp-2">@item.Title</h3>
+                            <p class="text-muted small mb-2">@item.ContentType - @item.Status</p>
+                            <a asp-controller="Series" asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary w-100">Voir la fiche</a>
+                        </div>
+                    </article>
+                </div>
+            }
+        </div>
+    }
+</section>
+
+@section Scripts
+{
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script>
+        (() => {
+            const root = getComputedStyle(document.documentElement);
+            const accent = root.getPropertyValue('--accent').trim() || '#0a84ff';
+            const accent2 = root.getPropertyValue('--accent-2').trim() || '#5ac8fa';
+            const textMuted = root.getPropertyValue('--text-muted').trim() || '#6b7280';
+
+            const weeklyLabels = @Html.Raw(weeklyLabelsJson);
+            const weeklyValues = @Html.Raw(weeklyValuesJson);
+            const mixLabels = @Html.Raw(mixLabelsJson);
+            const mixValues = @Html.Raw(mixValuesJson);
+
+            const weeklyCanvas = document.getElementById('weeklyActivityChart');
+            if (weeklyCanvas) {
+                new Chart(weeklyCanvas, {
+                    type: 'line',
+                    data: {
+                        labels: weeklyLabels,
+                        datasets: [{
+                            label: 'Ajouts',
+                            data: weeklyValues,
+                            borderColor: accent,
+                            backgroundColor: 'rgba(10, 132, 255, 0.16)',
+                            fill: true,
+                            tension: 0.35,
+                            borderWidth: 2.5,
+                            pointRadius: 3,
+                            pointHoverRadius: 4
+                        }]
+                    },
+                    options: {
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: 'rgba(148, 163, 184, 0.12)' },
+                                ticks: { color: textMuted }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                ticks: { precision: 0, color: textMuted },
+                                grid: { color: 'rgba(148, 163, 184, 0.12)' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            const mixCanvas = document.getElementById('contentMixChart');
+            if (mixCanvas) {
+                new Chart(mixCanvas, {
+                    type: 'doughnut',
+                    data: {
+                        labels: mixLabels,
+                        datasets: [{
+                            data: mixValues,
+                            backgroundColor: [
+                                accent,
+                                accent2,
+                                '#50d48b'
+                            ],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        },
+                        cutout: '65%'
+                    }
+                });
+            }
+        })();
+    </script>
+}

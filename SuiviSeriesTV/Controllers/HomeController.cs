@@ -2,8 +2,11 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SuiviSeriesTV.Constants;
 using SuiviSeriesTV.Data;
+using SuiviSeriesTV.Helpers;
 using SuiviSeriesTV.Models;
+using SuiviSeriesTV.Services.Library;
 using SuiviSeriesTV.ViewModels;
 
 namespace SuiviSeriesTV.Controllers;
@@ -11,95 +14,181 @@ namespace SuiviSeriesTV.Controllers;
 public class HomeController : Controller
 {
     private readonly ApplicationDbContext _context;
+    private readonly ILibraryService _libraryService;
 
-    public HomeController(ApplicationDbContext context)
+    public HomeController(ApplicationDbContext context, ILibraryService libraryService)
     {
         _context = context;
+        _libraryService = libraryService;
     }
 
     public async Task<IActionResult> Index()
     {
         var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var filmsQuery = _context.Series
-            .AsNoTracking()
-            .Where(s => s.ContentType == ContentType.Film);
+        var isAuthenticated = User.Identity?.IsAuthenticated == true;
+        var isAdmin = User.IsInRole(AppRoles.Admin);
 
-        var trendingMovies = await filmsQuery
+        var scopedQuery = _context.Series.AsNoTracking();
+        if (isAuthenticated && !isAdmin && !string.IsNullOrWhiteSpace(currentUserId))
+        {
+            scopedQuery = scopedQuery.Where(s => s.OwnerId == currentUserId);
+        }
+
+        var activeQuery = scopedQuery
+            .Where(s => s.Status != SerieStatus.Abandonne)
+            .Select(s => new Serie
+            {
+                Id = s.Id,
+                Title = s.Title,
+                Genre = s.Genre,
+                ContentType = s.ContentType,
+                Status = s.Status,
+                PersonalRating = s.PersonalRating,
+                StreamingPlatform = s.StreamingPlatform,
+                DateAdded = s.DateAdded,
+                ReleaseDate = s.ReleaseDate,
+                PosterUrl = s.PosterUrl,
+                BackdropUrl = s.BackdropUrl,
+                WatchedEpisodes = s.WatchedEpisodes,
+                TotalEpisodes = s.TotalEpisodes,
+                IsFavorite = s.IsFavorite
+            });
+
+        var topTenToday = await activeQuery
             .OrderByDescending(s => s.PersonalRating)
+            .ThenByDescending(s => s.IsFavorite)
             .ThenByDescending(s => s.DateAdded)
             .ThenBy(s => s.Title)
-            .Take(6)
+            .Take(10)
             .ToListAsync();
 
-        IReadOnlyList<Serie> recommendedMovies;
-        if (!string.IsNullOrWhiteSpace(currentUserId))
+        var trendingMovies = topTenToday.Take(6).ToList();
+
+        var becauseYouLikedMovies = new List<Serie>();
+        string becauseYouLikedTitle = "Parce que vous avez aime";
+        if (isAuthenticated && !isAdmin && !string.IsNullOrWhiteSpace(currentUserId))
         {
-            var personnalized = await _context.Series
-                .AsNoTracking()
-                .Where(s =>
-                    s.OwnerId == currentUserId &&
-                    s.ContentType == ContentType.Film &&
-                    (s.Status == SerieStatus.Watchlist || s.Status == SerieStatus.EnCours))
+            var userGenres = await scopedQuery
+                .Where(s => !string.IsNullOrWhiteSpace(s.Genre))
+                .Select(s => s.Genre)
+                .ToListAsync();
+
+            var favoriteGenres = userGenres
+                .SelectMany(GenreParser.SplitGenres)
+                .GroupBy(g => g, StringComparer.OrdinalIgnoreCase)
+                .OrderByDescending(g => g.Count())
+                .ThenBy(g => g.Key)
+                .Select(g => g.Key)
+                .Take(2)
+                .ToList();
+
+            if (favoriteGenres.Any())
+            {
+                becauseYouLikedTitle = $"Parce que vous avez aime {favoriteGenres[0]}";
+            }
+
+            var candidates = await activeQuery
                 .OrderByDescending(s => s.IsFavorite)
                 .ThenByDescending(s => s.PersonalRating)
                 .ThenByDescending(s => s.DateAdded)
-                .Take(6)
+                .ThenBy(s => s.Title)
+                .Take(60)
                 .ToListAsync();
 
-            if (personnalized.Any())
-            {
-                recommendedMovies = personnalized;
-            }
-            else
-            {
-                var favoriteGenres = await _context.Series
-                    .AsNoTracking()
-                    .Where(s => s.OwnerId == currentUserId && !string.IsNullOrWhiteSpace(s.Genre))
-                    .GroupBy(s => s.Genre)
-                    .OrderByDescending(g => g.Count())
-                    .Select(g => g.Key)
-                    .Take(3)
-                    .ToListAsync();
+            var personalized = candidates
+                .Where(s => s.Status == SerieStatus.Watchlist || s.Status == SerieStatus.EnCours)
+                .Take(6)
+                .ToList();
 
-                recommendedMovies = favoriteGenres.Any()
-                    ? await filmsQuery
-                        .Where(s => favoriteGenres.Contains(s.Genre))
-                        .OrderByDescending(s => s.PersonalRating)
-                        .ThenByDescending(s => s.DateAdded)
-                        .Take(6)
-                        .ToListAsync()
-                    : trendingMovies;
+            becauseYouLikedMovies.AddRange(personalized);
+
+            if (becauseYouLikedMovies.Count < 6 && favoriteGenres.Any())
+            {
+                var favoriteGenreSet = favoriteGenres.ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var addedIds = becauseYouLikedMovies.Select(x => x.Id).ToHashSet();
+
+                var byGenres = candidates
+                    .Where(s => !addedIds.Contains(s.Id) && MatchesAnyGenre(s, favoriteGenreSet))
+                    .Take(6 - becauseYouLikedMovies.Count)
+                    .ToList();
+
+                becauseYouLikedMovies.AddRange(byGenres);
             }
         }
         else
         {
-            recommendedMovies = await filmsQuery
-                .Where(s => s.Status != SerieStatus.Abandonne)
+            becauseYouLikedMovies = await activeQuery
                 .OrderByDescending(s => s.DateAdded)
                 .ThenByDescending(s => s.PersonalRating)
                 .Take(6)
                 .ToListAsync();
         }
 
-        if (!recommendedMovies.Any())
+        if (!becauseYouLikedMovies.Any())
         {
-            recommendedMovies = trendingMovies;
+            becauseYouLikedMovies = trendingMovies.ToList();
         }
 
-        var allFilms = await filmsQuery
+        var newReleaseMovies = await activeQuery
+            .OrderByDescending(s => s.ReleaseDate ?? s.DateAdded)
+            .ThenByDescending(s => s.DateAdded)
+            .ThenBy(s => s.Title)
+            .Take(6)
+            .ToListAsync();
+
+        IReadOnlyList<Serie> continueWatching = !isAuthenticated || string.IsNullOrWhiteSpace(currentUserId)
+            ? Array.Empty<Serie>()
+            : await activeQuery
+                .Where(s => s.Status == SerieStatus.EnCours && s.WatchedEpisodes > 0 && s.WatchedEpisodes < s.TotalEpisodes)
+                .OrderByDescending(s => s.DateAdded)
+                .ThenByDescending(s => s.PersonalRating)
+                .Take(8)
+                .ToListAsync();
+
+        var allCatalogItems = await activeQuery
             .OrderByDescending(s => s.PersonalRating)
             .ThenByDescending(s => s.DateAdded)
+            .Take(400)
             .ToListAsync();
 
         var model = new HomeIndexViewModel
         {
-            IsAuthenticated = User.Identity?.IsAuthenticated == true,
+            IsAuthenticated = isAuthenticated,
             TrendingMovies = trendingMovies,
-            RecommendedMovies = recommendedMovies,
-            GenreCards = BuildGenreCards(allFilms)
+            TopTenToday = topTenToday,
+            BecauseYouLikedMovies = becauseYouLikedMovies,
+            BecauseYouLikedTitle = becauseYouLikedTitle,
+            NewReleaseMovies = newReleaseMovies,
+            ContinueWatching = continueWatching,
+            GenreCards = BuildGenreCards(allCatalogItems)
         };
 
         return View(model);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> SearchSuggestions(string? query)
+    {
+        if (string.IsNullOrWhiteSpace(query) || query.Trim().Length < 2)
+        {
+            return Json(Array.Empty<object>());
+        }
+
+        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var isAdmin = User.IsInRole(AppRoles.Admin);
+        var normalizedQuery = query.Trim();
+
+        IReadOnlyList<SearchSuggestionViewModel> suggestions;
+        if (!string.IsNullOrWhiteSpace(currentUserId) || isAdmin)
+        {
+            suggestions = await _libraryService.GetSearchSuggestionsAsync(currentUserId ?? string.Empty, isAdmin, normalizedQuery, 8);
+        }
+        else
+        {
+            suggestions = await _libraryService.GetPublicSearchSuggestionsAsync(normalizedQuery, 8);
+        }
+
+        return Json(suggestions);
     }
 
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
@@ -108,18 +197,19 @@ public class HomeController : Controller
         return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
     }
 
-    private static IReadOnlyList<HomeGenreCardViewModel> BuildGenreCards(IReadOnlyList<Serie> films)
+    private static IReadOnlyList<HomeGenreCardViewModel> BuildGenreCards(IReadOnlyList<Serie> items)
     {
-        var cards = films
+        var cards = items
             .Where(f => !string.IsNullOrWhiteSpace(f.Genre))
-            .GroupBy(f => f.Genre.Trim(), StringComparer.OrdinalIgnoreCase)
+            .SelectMany(item => GenreParser.SplitGenres(item.Genre).Select(genre => new { Genre = genre, Item = item }))
+            .GroupBy(x => x.Genre, StringComparer.OrdinalIgnoreCase)
             .OrderByDescending(g => g.Count())
             .ThenBy(g => g.Key)
             .Select(g => new HomeGenreCardViewModel
             {
-                Genre = g.First().Genre,
+                Genre = g.Key,
                 ItemCount = g.Count(),
-                CoverUrl = g.Select(x => !string.IsNullOrWhiteSpace(x.BackdropUrl) ? x.BackdropUrl : x.PosterUrl)
+                CoverUrl = g.Select(x => !string.IsNullOrWhiteSpace(x.Item.BackdropUrl) ? x.Item.BackdropUrl : x.Item.PosterUrl)
                     .FirstOrDefault(url => !string.IsNullOrWhiteSpace(url))
                     ?? string.Empty
             })
@@ -138,6 +228,19 @@ public class HomeController : Controller
             .Where(c => !string.IsNullOrWhiteSpace(c.CoverUrl))
             .Take(24)
             .ToList();
+    }
+
+    private static bool MatchesAnyGenre(Serie item, HashSet<string> favoriteGenres)
+    {
+        foreach (var genre in GenreParser.SplitGenres(item.Genre))
+        {
+            if (favoriteGenres.Contains(genre))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static IReadOnlyList<HomeGenreCardViewModel> GetFallbackGenreCards()

@@ -24,27 +24,57 @@ public class SmtpEmailService : IEmailService
 
     public async Task SendEmailAsync(string toEmail, string subject, string htmlContent)
     {
-        if (_settings.Enabled && !string.IsNullOrWhiteSpace(_settings.SmtpHost))
+        if (CanUseSmtp())
         {
-            using var smtpClient = new SmtpClient(_settings.SmtpHost, _settings.SmtpPort)
+            try
             {
-                EnableSsl = _settings.UseSsl,
-                Credentials = new NetworkCredential(_settings.SmtpUsername, _settings.SmtpPassword)
-            };
+                using var smtpClient = new SmtpClient(_settings.SmtpHost, _settings.SmtpPort)
+                {
+                    EnableSsl = _settings.UseSsl,
+                    Credentials = new NetworkCredential(_settings.SmtpUsername, _settings.SmtpPassword)
+                };
 
-            using var message = new MailMessage
+                using var message = new MailMessage
+                {
+                    From = new MailAddress(_settings.SenderEmail, _settings.SenderName),
+                    Subject = subject,
+                    Body = htmlContent,
+                    IsBodyHtml = true
+                };
+
+                message.To.Add(toEmail);
+                await smtpClient.SendMailAsync(message);
+                _logger.LogInformation("Email sent via SMTP to {Recipient}.", toEmail);
+                return;
+            }
+            catch (Exception ex)
             {
-                From = new MailAddress(_settings.SenderEmail, _settings.SenderName),
-                Subject = subject,
-                Body = htmlContent,
-                IsBodyHtml = true
-            };
-
-            message.To.Add(toEmail);
-            await smtpClient.SendMailAsync(message);
-            return;
+                _logger.LogError(ex, "SMTP send failed for {Recipient}. Falling back to local email capture.", toEmail);
+            }
+        }
+        else if (_settings.Enabled)
+        {
+            _logger.LogWarning("EmailSettings.Enabled is true but SMTP configuration is incomplete. Falling back to local email capture.");
         }
 
+        await CaptureEmailLocallyAsync(toEmail, subject, htmlContent);
+    }
+
+    private bool CanUseSmtp()
+    {
+        if (!_settings.Enabled)
+        {
+            return false;
+        }
+
+        return !string.IsNullOrWhiteSpace(_settings.SmtpHost)
+            && !string.IsNullOrWhiteSpace(_settings.SenderEmail)
+            && !string.IsNullOrWhiteSpace(_settings.SmtpUsername)
+            && !string.IsNullOrWhiteSpace(_settings.SmtpPassword);
+    }
+
+    private async Task CaptureEmailLocallyAsync(string toEmail, string subject, string htmlContent)
+    {
         var emailDirectory = Path.Combine(_environment.ContentRootPath, "App_Data", "Emails");
         Directory.CreateDirectory(emailDirectory);
 

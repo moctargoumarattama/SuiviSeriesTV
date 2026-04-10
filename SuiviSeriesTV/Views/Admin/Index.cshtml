@@ -1,45 +1,74 @@
-﻿@model AdminDashboardViewModel
+@model AdminDashboardViewModel
 @{
     ViewData["Title"] = "Tableau de bord admin";
+    var confirmationRate = Model.TotalUsers == 0
+        ? 0
+        : (int)Math.Round((double)Model.ConfirmedEmails * 100 / Model.TotalUsers);
 }
 
-<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
-    <h1 class="h3 mb-0">Tableau de bord administrateur</h1>
-    <a asp-action="Users" class="btn btn-dark">Gerer les utilisateurs</a>
-</div>
+<section class="hero-strip rounded-4 p-4 p-md-5 mb-4 reveal premium-panel admin-hero">
+    <div class="row g-4 align-items-center">
+        <div class="col-lg-8">
+            <p class="ops-kicker mb-2">ADMIN CENTER</p>
+            <h1 class="h2 mb-2">Pilotage des comptes Zerra TV</h1>
+            <p class="text-muted mb-3">Supervisez les acces, les confirmations email et la securite des comptes.</p>
+            <div class="d-flex flex-wrap gap-2">
+                <a asp-action="Users" class="btn btn-primary">
+                    <i class="bi bi-people me-1"></i> Gerer les utilisateurs
+                </a>
+                <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">
+                    <i class="bi bi-house me-1"></i> Retour accueil
+                </a>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <aside class="admin-side-info">
+                <h2 class="h6 mb-3">Sante plateforme</h2>
+                <div class="admin-side-line">
+                    <span>Taux emails confirmes</span>
+                    <strong>@confirmationRate%</strong>
+                </div>
+                <div class="admin-side-line">
+                    <span>Comptes verrouilles</span>
+                    <strong>@Model.LockedUsers</strong>
+                </div>
+                <div class="admin-side-line">
+                    <span>Admins actifs</span>
+                    <strong>@Model.TotalAdmins</strong>
+                </div>
+            </aside>
+        </div>
+    </div>
+</section>
 
-<div class="row g-3">
-    <div class="col-md-6 col-lg-3">
-        <div class="card stat-card border-0 shadow-sm h-100">
-            <div class="card-body">
-                <p class="text-uppercase text-muted small mb-1">Utilisateurs</p>
-                <h2 class="display-6 mb-0">@Model.TotalUsers</h2>
-            </div>
-        </div>
+<section class="row g-3 reveal premium-section">
+    <div class="col-6 col-md-3">
+        <article class="admin-kpi-card h-100">
+            <span class="admin-kpi-icon"><i class="bi bi-people-fill"></i></span>
+            <span class="admin-kpi-label">Utilisateurs</span>
+            <strong class="admin-kpi-value">@Model.TotalUsers</strong>
+        </article>
     </div>
-    <div class="col-md-6 col-lg-3">
-        <div class="card stat-card border-0 shadow-sm h-100">
-            <div class="card-body">
-                <p class="text-uppercase text-muted small mb-1">Administrateurs</p>
-                <h2 class="display-6 mb-0">@Model.TotalAdmins</h2>
-            </div>
-        </div>
+    <div class="col-6 col-md-3">
+        <article class="admin-kpi-card h-100">
+            <span class="admin-kpi-icon"><i class="bi bi-person-badge-fill"></i></span>
+            <span class="admin-kpi-label">Administrateurs</span>
+            <strong class="admin-kpi-value">@Model.TotalAdmins</strong>
+        </article>
     </div>
-    <div class="col-md-6 col-lg-3">
-        <div class="card stat-card border-0 shadow-sm h-100">
-            <div class="card-body">
-                <p class="text-uppercase text-muted small mb-1">Emails confirmes</p>
-                <h2 class="display-6 mb-0">@Model.ConfirmedEmails</h2>
-            </div>
-        </div>
+    <div class="col-6 col-md-3">
+        <article class="admin-kpi-card h-100">
+            <span class="admin-kpi-icon"><i class="bi bi-envelope-check-fill"></i></span>
+            <span class="admin-kpi-label">Emails confirmes</span>
+            <strong class="admin-kpi-value">@Model.ConfirmedEmails</strong>
+        </article>
     </div>
-    <div class="col-md-6 col-lg-3">
-        <div class="card stat-card border-0 shadow-sm h-100">
-            <div class="card-body">
-                <p class="text-uppercase text-muted small mb-1">Comptes bloques</p>
-                <h2 class="display-6 mb-0">@Model.LockedUsers</h2>
-            </div>
-        </div>
+    <div class="col-6 col-md-3">
+        <article class="admin-kpi-card h-100">
+            <span class="admin-kpi-icon"><i class="bi bi-shield-lock-fill"></i></span>
+            <span class="admin-kpi-label">Comptes bloques</span>
+            <strong class="admin-kpi-value">@Model.LockedUsers</strong>
+        </article>
     </div>
-</div>
+</section>
 

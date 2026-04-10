@@ -47,15 +47,14 @@ public class SeriesController : Controller
         string sortBy = "date_desc",
         int page = 1)
     {
-        var userId = GetCurrentUserId();
-        if (string.IsNullOrWhiteSpace(userId))
+        if (!TryGetUserContext(out var userId, out var isAdmin))
         {
             return Challenge();
         }
 
         var vm = await _libraryService.GetLibraryAsync(
             userId,
-            IsAdmin(),
+            isAdmin,
             new SeriesQueryOptions
             {
                 SearchTerm = searchTerm,
@@ -73,13 +72,12 @@ public class SeriesController : Controller
     [HttpGet]
     public async Task<IActionResult> Dashboard()
     {
-        var userId = GetCurrentUserId();
-        if (string.IsNullOrWhiteSpace(userId))
+        if (!TryGetUserContext(out var userId, out var isAdmin))
         {
             return Challenge();
         }
 
-        var vm = await _libraryService.GetDashboardAsync(userId, IsAdmin());
+        var vm = await _libraryService.GetDashboardAsync(userId, isAdmin);
         return View(vm);
     }
 
@@ -91,19 +89,33 @@ public class SeriesController : Controller
             return NotFound();
         }
 
-        var userId = GetCurrentUserId();
-        if (string.IsNullOrWhiteSpace(userId))
+        if (!TryGetUserContext(out var userId, out var isAdmin))
         {
             return Challenge();
         }
 
-        var item = await _libraryService.GetAccessibleByIdAsync(id.Value, userId, IsAdmin());
+        var item = await _libraryService.GetAccessibleByIdAsync(id.Value, userId, isAdmin);
         if (item is null)
         {
-            return NotFound();
+            var exists = await _context.Series.AsNoTracking().AnyAsync(s => s.Id == id.Value);
+            TempData["ErrorMessage"] = exists
+                ? "Ce contenu n'est pas accessible depuis votre compte."
+                : "Ce contenu n'existe plus.";
+            return RedirectToAction(nameof(Index));
         }
 
-        return View(item);
+        TmdbMediaDetailsViewModel? tmdbDetails = null;
+        if (_tmdbService.IsEnabled && item.TmdbId.HasValue)
+        {
+            var mediaType = item.ContentType == ContentType.Film ? "movie" : "tv";
+            tmdbDetails = await _tmdbService.GetMediaDetailsAsync(mediaType, item.TmdbId.Value);
+        }
+
+        return View(new SeriesDetailsViewModel
+        {
+            Item = item,
+            Tmdb = tmdbDetails
+        });
     }
 
     [HttpGet]
@@ -137,8 +149,7 @@ public class SeriesController : Controller
             return View(serie);
         }
 
-        var userId = GetCurrentUserId();
-        if (string.IsNullOrWhiteSpace(userId))
+        if (!TryGetUserContext(out var userId, out var isAdmin))
         {
             return Challenge();
         }
@@ -150,6 +161,10 @@ public class SeriesController : Controller
         }
 
         serie.OwnerId = userId;
+        if (serie.Status == SerieStatus.Watchlist)
+        {
+            serie.WatchlistOrder = await GetNextWatchlistOrderAsync(userId, isAdmin);
+        }
         _context.Add(serie);
         await _context.SaveChangesAsync();
 
@@ -165,13 +180,12 @@ public class SeriesController : Controller
             return NotFound();
         }
 
-        var userId = GetCurrentUserId();
-        if (string.IsNullOrWhiteSpace(userId))
+        if (!TryGetUserContext(out var userId, out var isAdmin))
         {
             return Challenge();
         }
 
-        var item = await _libraryService.GetAccessibleByIdAsync(id.Value, userId, IsAdmin());
+        var item = await _libraryService.GetAccessibleByIdAsync(id.Value, userId, isAdmin);
         if (item is null)
         {
             return NotFound();
@@ -192,13 +206,12 @@ public class SeriesController : Controller
             return NotFound();
         }
 
-        var userId = GetCurrentUserId();
-        if (string.IsNullOrWhiteSpace(userId))
+        if (!TryGetUserContext(out var userId, out var isAdmin))
         {
             return Challenge();
         }
 
-        var existing = await _libraryService.GetAccessibleByIdAsync(id, userId, IsAdmin());
+        var existing = await _libraryService.GetAccessibleByIdAsync(id, userId, isAdmin);
         if (existing is null)
         {
             return NotFound();
@@ -209,27 +222,10 @@ public class SeriesController : Controller
             return View(input);
         }
 
-        existing.Title = input.Title;
-        existing.Genre = input.Genre;
-        existing.Description = input.Description;
-        existing.ContentType = input.ContentType;
-        existing.SeasonsCount = input.SeasonsCount;
-        existing.TotalEpisodes = input.TotalEpisodes;
-        existing.WatchedEpisodes = input.WatchedEpisodes;
-        existing.LastWatchedSeason = input.LastWatchedSeason;
-        existing.LastWatchedEpisode = input.LastWatchedEpisode;
-        existing.Status = input.Status;
-        existing.PersonalRating = input.PersonalRating;
-        existing.StreamingPlatform = input.StreamingPlatform;
-        existing.DateAdded = input.DateAdded;
-        existing.ReleaseDate = input.ReleaseDate;
-        existing.NextReleaseDate = input.NextReleaseDate;
-        existing.AverageEpisodeRuntimeMinutes = input.AverageEpisodeRuntimeMinutes;
-        existing.PosterUrl = input.PosterUrl;
-        existing.BackdropUrl = input.BackdropUrl;
-        existing.IsFavorite = input.IsFavorite;
-        existing.PersonalComment = input.PersonalComment;
-        existing.TmdbId = input.TmdbId;
+        ApplyEditableFields(existing, input);
+        existing.WatchlistOrder = input.Status == SerieStatus.Watchlist
+            ? existing.WatchlistOrder ?? await GetNextWatchlistOrderAsync(userId, isAdmin)
+            : null;
 
         var uploadedPath = await _fileStorageService.SavePosterAsync(posterFile);
         if (!string.IsNullOrWhiteSpace(uploadedPath))
@@ -257,6 +253,31 @@ public class SeriesController : Controller
     }
 
     [HttpGet]
+    public async Task<IActionResult> SearchSuggestions(string? query)
+    {
+        if (!TryGetUserContext(out var userId, out var isAdmin))
+        {
+            return Json(Array.Empty<object>());
+        }
+
+        var suggestions = await _libraryService.GetSearchSuggestionsAsync(userId, isAdmin, query ?? string.Empty, 8);
+        return Json(suggestions);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ReorderWatchlist([FromBody] WatchlistReorderRequest request)
+    {
+        if (!TryGetUserContext(out var userId, out var isAdmin))
+        {
+            return Unauthorized();
+        }
+
+        var ok = await _libraryService.ReorderWatchlistAsync(userId, isAdmin, request.OrderedIds);
+        return ok ? Ok(new { message = "Ordre enregistre." }) : BadRequest(new { message = "Impossible de reordonner." });
+    }
+
+    [HttpGet]
     public async Task<IActionResult> Delete(int? id)
     {
         if (id is null)
@@ -264,13 +285,12 @@ public class SeriesController : Controller
             return NotFound();
         }
 
-        var userId = GetCurrentUserId();
-        if (string.IsNullOrWhiteSpace(userId))
+        if (!TryGetUserContext(out var userId, out var isAdmin))
         {
             return Challenge();
         }
 
-        var item = await _libraryService.GetAccessibleByIdAsync(id.Value, userId, IsAdmin());
+        var item = await _libraryService.GetAccessibleByIdAsync(id.Value, userId, isAdmin);
         if (item is null)
         {
             return NotFound();
@@ -283,13 +303,12 @@ public class SeriesController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteConfirmed(int id)
     {
-        var userId = GetCurrentUserId();
-        if (string.IsNullOrWhiteSpace(userId))
+        if (!TryGetUserContext(out var userId, out var isAdmin))
         {
             return Challenge();
         }
 
-        var item = await _libraryService.GetAccessibleByIdAsync(id, userId, IsAdmin());
+        var item = await _libraryService.GetAccessibleByIdAsync(id, userId, isAdmin);
         if (item is null)
         {
             TempData["ErrorMessage"] = "Contenu introuvable.";
@@ -306,13 +325,12 @@ public class SeriesController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> MarkAsWatched(int id)
     {
-        var userId = GetCurrentUserId();
-        if (string.IsNullOrWhiteSpace(userId))
+        if (!TryGetUserContext(out var userId, out var isAdmin))
         {
             return Challenge();
         }
 
-        var ok = await _libraryService.MarkAsWatchedAsync(id, userId, IsAdmin());
+        var ok = await _libraryService.MarkAsWatchedAsync(id, userId, isAdmin);
         TempData[ok ? "SuccessMessage" : "ErrorMessage"] = ok
             ? "Progression mise a jour."
             : "Impossible de marquer comme vu.";
@@ -323,13 +341,12 @@ public class SeriesController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ToggleFavorite(int id)
     {
-        var userId = GetCurrentUserId();
-        if (string.IsNullOrWhiteSpace(userId))
+        if (!TryGetUserContext(out var userId, out var isAdmin))
         {
             return Challenge();
         }
 
-        var ok = await _libraryService.ToggleFavoriteAsync(id, userId, IsAdmin());
+        var ok = await _libraryService.ToggleFavoriteAsync(id, userId, isAdmin);
         TempData[ok ? "SuccessMessage" : "ErrorMessage"] = ok
             ? "Favori mis a jour."
             : "Action impossible.";
@@ -339,14 +356,13 @@ public class SeriesController : Controller
     [HttpGet]
     public async Task<IActionResult> Calendar()
     {
-        var userId = GetCurrentUserId();
-        if (string.IsNullOrWhiteSpace(userId))
+        if (!TryGetUserContext(out var userId, out var isAdmin))
         {
             return Challenge();
         }
 
         var query = _context.Series.AsNoTracking().Where(s => s.NextReleaseDate.HasValue);
-        if (!IsAdmin())
+        if (!isAdmin)
         {
             query = query.Where(s => s.OwnerId == userId);
         }
@@ -392,24 +408,57 @@ public class SeriesController : Controller
     [HttpGet]
     public async Task<IActionResult> ExportCsv()
     {
-        var userId = GetCurrentUserId();
-        if (string.IsNullOrWhiteSpace(userId))
+        if (!TryGetUserContext(out var userId, out var isAdmin))
         {
             return Challenge();
         }
 
-        var bytes = await _exportService.BuildLibraryCsvAsync(userId, IsAdmin());
+        var bytes = await _exportService.BuildLibraryCsvAsync(userId, isAdmin);
         var fileName = $"bibliotheque_{DateTime.UtcNow:yyyyMMdd_HHmm}.csv";
         return File(bytes, "text/csv; charset=utf-8", fileName);
     }
 
-    private bool IsAdmin()
+    private bool TryGetUserContext(out string userId, out bool isAdmin)
     {
-        return User.IsInRole(AppRoles.Admin);
+        userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        isAdmin = User.IsInRole(AppRoles.Admin);
+        return !string.IsNullOrWhiteSpace(userId);
     }
 
-    private string? GetCurrentUserId()
+    private static void ApplyEditableFields(Serie target, Serie source)
     {
-        return User.FindFirstValue(ClaimTypes.NameIdentifier);
+        target.Title = source.Title;
+        target.Genre = source.Genre;
+        target.Description = source.Description;
+        target.ContentType = source.ContentType;
+        target.SeasonsCount = source.SeasonsCount;
+        target.TotalEpisodes = source.TotalEpisodes;
+        target.WatchedEpisodes = source.WatchedEpisodes;
+        target.LastWatchedSeason = source.LastWatchedSeason;
+        target.LastWatchedEpisode = source.LastWatchedEpisode;
+        target.Status = source.Status;
+        target.PersonalRating = source.PersonalRating;
+        target.StreamingPlatform = source.StreamingPlatform;
+        target.DateAdded = source.DateAdded;
+        target.ReleaseDate = source.ReleaseDate;
+        target.NextReleaseDate = source.NextReleaseDate;
+        target.AverageEpisodeRuntimeMinutes = source.AverageEpisodeRuntimeMinutes;
+        target.PosterUrl = source.PosterUrl;
+        target.BackdropUrl = source.BackdropUrl;
+        target.IsFavorite = source.IsFavorite;
+        target.PersonalComment = source.PersonalComment;
+        target.TmdbId = source.TmdbId;
+    }
+
+    private async Task<int> GetNextWatchlistOrderAsync(string userId, bool isAdmin)
+    {
+        var query = _context.Series.Where(s => s.Status == SerieStatus.Watchlist);
+        if (!isAdmin)
+        {
+            query = query.Where(s => s.OwnerId == userId);
+        }
+
+        var max = await query.MaxAsync(s => (int?)s.WatchlistOrder) ?? 0;
+        return max + 1;
     }
 }

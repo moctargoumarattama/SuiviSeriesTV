@@ -14,6 +14,7 @@ public class SeriesDashboardViewModel
 
     public IReadOnlyList<Serie> WatchNext { get; set; } = [];
     public IReadOnlyList<Serie> ResumeItems { get; set; } = [];
+    public IReadOnlyList<Serie> WatchlistQueue { get; set; } = [];
     public IReadOnlyList<Serie> UpcomingThisWeek { get; set; } = [];
 
     public IReadOnlyList<string> ChartLabels { get; set; } = [];

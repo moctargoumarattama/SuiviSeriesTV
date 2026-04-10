@@ -1,104 +1,127 @@
-﻿@model IReadOnlyList<AdminUserItemViewModel>
+@model IReadOnlyList<AdminUserItemViewModel>
 @{
     ViewData["Title"] = "Gestion des utilisateurs";
     var search = ViewData["Search"] as string;
 }
 
-<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
-    <h1 class="h3 mb-0">Gestion des utilisateurs</h1>
-    <a asp-action="Index" class="btn btn-outline-secondary">Retour au tableau de bord</a>
-</div>
+<section class="hero-strip rounded-4 p-4 p-md-5 mb-4 reveal premium-panel admin-hero">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+            <p class="ops-kicker mb-2">ADMIN USERS</p>
+            <h1 class="h2 mb-2">Gestion des utilisateurs</h1>
+            <p class="text-muted mb-0">Verrouillez, promouvez ou supprimez des comptes en toute securite.</p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary mt-1">
+            <i class="bi bi-arrow-left me-1"></i> Retour dashboard admin
+        </a>
+    </div>
+</section>
 
-<div class="card border-0 shadow-sm mb-4">
+<section class="card border-0 shadow-sm mb-4 reveal premium-panel admin-search-panel">
     <div class="card-body">
         <form method="get" asp-action="Users" class="row g-3 align-items-end">
-            <div class="col-md-10">
+            <div class="col-lg-10">
                 <label class="form-label" for="search">Rechercher par email</label>
-                <input id="search" name="search" class="form-control" value="@search" placeholder="ex: user@suiviseriestv.local" />
+                <input id="search" name="search" class="form-control form-control-lg" value="@search" placeholder="ex: user@zerratv.local" />
             </div>
-            <div class="col-md-2 d-grid">
-                <button type="submit" class="btn btn-dark">Rechercher</button>
+            <div class="col-lg-2 d-grid">
+                <button type="submit" class="btn btn-primary btn-lg">Rechercher</button>
             </div>
         </form>
     </div>
-</div>
+</section>
 
-<div class="table-responsive">
-    <table class="table table-hover align-middle">
-        <thead class="table-light">
-            <tr>
-                <th>Email</th>
-                <th>Email confirme</th>
-                <th>Profil</th>
-                <th>Etat</th>
-                <th>Cree le</th>
-                <th class="text-end">Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var user in Model)
-            {
-                <tr>
-                    <td>@user.Email</td>
-                    <td>
-                        @if (user.EmailConfirmed)
+@if (!Model.Any())
+{
+    <div class="card border-0 shadow-sm reveal premium-panel">
+        <div class="card-body text-center p-5">
+            <h2 class="h5 mb-2">Aucun utilisateur trouve</h2>
+            <p class="text-muted mb-0">Essayez un autre email ou retirez le filtre de recherche.</p>
+        </div>
+    </div>
+}
+else
+{
+    <section class="card border-0 shadow-sm reveal premium-panel admin-users-panel">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 admin-users-table">
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Confirmation</th>
+                            <th>Profil</th>
+                            <th>Etat</th>
+                            <th>Cree le</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in Model)
                         {
-                            <span class="badge text-bg-success">Oui</span>
-                        }
-                        else
-                        {
-                            <span class="badge text-bg-warning">Non</span>
-                        }
-                    </td>
-                    <td>
-                        @if (user.IsAdmin)
-                        {
-                            <span class="badge text-bg-dark">Admin</span>
-                        }
-                        else
-                        {
-                            <span class="badge text-bg-secondary">Utilisateur</span>
-                        }
-                    </td>
-                    <td>
-                        @if (user.IsLocked)
-                        {
-                            <span class="badge text-bg-danger">Bloque</span>
-                        }
-                        else
-                        {
-                            <span class="badge text-bg-success">Actif</span>
-                        }
-                    </td>
-                    <td>@user.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
-                    <td class="text-end">
-                        <div class="d-inline-flex flex-wrap gap-1 justify-content-end">
-                            <form asp-action="ToggleLock" method="post">
-                                <input type="hidden" name="id" value="@user.Id" />
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-sm btn-outline-warning">
-                                    @(user.IsLocked ? "Debloquer" : "Bloquer")
-                                </button>
-                            </form>
+                            <tr>
+                                <td class="fw-semibold" data-label="Email">@user.Email</td>
+                                <td data-label="Confirmation">
+                                    @if (user.EmailConfirmed)
+                                    {
+                                        <span class="badge admin-pill ok"><i class="bi bi-check-circle-fill me-1"></i>Oui</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge admin-pill warn"><i class="bi bi-exclamation-triangle-fill me-1"></i>Non</span>
+                                    }
+                                </td>
+                                <td data-label="Profil">
+                                    @if (user.IsAdmin)
+                                    {
+                                        <span class="badge admin-pill neutral"><i class="bi bi-person-badge-fill me-1"></i>Admin</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge admin-pill soft"><i class="bi bi-person-fill me-1"></i>Utilisateur</span>
+                                    }
+                                </td>
+                                <td data-label="Etat">
+                                    @if (user.IsLocked)
+                                    {
+                                        <span class="badge admin-pill danger"><i class="bi bi-lock-fill me-1"></i>Bloque</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge admin-pill ok"><i class="bi bi-unlock-fill me-1"></i>Actif</span>
+                                    }
+                                </td>
+                                <td class="text-muted" data-label="Cree le">@user.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="text-end" data-label="Actions">
+                                    <div class="d-inline-flex flex-wrap gap-1 justify-content-end">
+                                        <form asp-action="ToggleLock" method="post">
+                                            <input type="hidden" name="id" value="@user.Id" />
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-warning">
+                                                @(user.IsLocked ? "Debloquer" : "Bloquer")
+                                            </button>
+                                        </form>
 
-                            <form asp-action="ToggleAdminRole" method="post">
-                                <input type="hidden" name="id" value="@user.Id" />
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-sm btn-outline-primary">
-                                    @(user.IsAdmin ? "Retirer admin" : "Promouvoir admin")
-                                </button>
-                            </form>
+                                        <form asp-action="ToggleAdminRole" method="post">
+                                            <input type="hidden" name="id" value="@user.Id" />
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-primary">
+                                                @(user.IsAdmin ? "Retirer admin" : "Promouvoir admin")
+                                            </button>
+                                        </form>
 
-                            <form asp-action="DeleteUser" method="post" onsubmit="return confirm('Confirmer la suppression de ce compte ?');">
-                                <input type="hidden" name="id" value="@user.Id" />
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-sm btn-outline-danger">Supprimer</button>
-                            </form>
-                        </div>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-</div>
-
+                                        <form asp-action="DeleteUser" method="post" onsubmit="return confirm('Confirmer la suppression de ce compte ?');">
+                                            <input type="hidden" name="id" value="@user.Id" />
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">Supprimer</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+}

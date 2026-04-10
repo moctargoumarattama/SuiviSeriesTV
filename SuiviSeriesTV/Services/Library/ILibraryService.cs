@@ -10,5 +10,8 @@ public interface ILibraryService
     Task<Serie?> GetAccessibleByIdAsync(int id, string userId, bool isAdmin);
     Task<bool> MarkAsWatchedAsync(int id, string userId, bool isAdmin);
     Task<bool> ToggleFavoriteAsync(int id, string userId, bool isAdmin);
+    Task<bool> ReorderWatchlistAsync(string userId, bool isAdmin, IReadOnlyList<int> orderedIds);
+    Task<IReadOnlyList<SearchSuggestionViewModel>> GetSearchSuggestionsAsync(string userId, bool isAdmin, string query, int limit = 6);
+    Task<IReadOnlyList<SearchSuggestionViewModel>> GetPublicSearchSuggestionsAsync(string query, int limit = 6);
     int EstimateRemainingMinutes(Serie item);
 }

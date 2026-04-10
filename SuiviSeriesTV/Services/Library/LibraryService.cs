@@ -96,6 +96,14 @@ public class LibraryService : ILibraryService
             .Take(8)
             .ToListAsync();
 
+        var watchlistQueue = await query
+            .Where(s => s.Status == SerieStatus.Watchlist)
+            .OrderBy(s => s.WatchlistOrder ?? int.MaxValue)
+            .ThenByDescending(s => s.DateAdded)
+            .ThenBy(s => s.Title)
+            .Take(200)
+            .ToListAsync();
+
         var allItems = await query.ToListAsync();
         var remainingMinutes = allItems.Sum(EstimateRemainingMinutes);
 
@@ -110,6 +118,7 @@ public class LibraryService : ILibraryService
             EstimatedRemainingMinutes = remainingMinutes,
             WatchNext = watchNext,
             ResumeItems = resumeItems,
+            WatchlistQueue = watchlistQueue,
             UpcomingThisWeek = upcoming,
             ChartLabels = ["A voir", "En cours", "Termine", "Abandonne"],
             ChartValues =
@@ -151,6 +160,11 @@ public class LibraryService : ILibraryService
             ? SerieStatus.Termine
             : SerieStatus.EnCours;
 
+        if (item.Status != SerieStatus.Watchlist)
+        {
+            item.WatchlistOrder = null;
+        }
+
         await _context.SaveChangesAsync();
         return true;
     }
@@ -168,6 +182,72 @@ public class LibraryService : ILibraryService
         return true;
     }
 
+    public async Task<bool> ReorderWatchlistAsync(string userId, bool isAdmin, IReadOnlyList<int> orderedIds)
+    {
+        if (orderedIds.Count == 0)
+        {
+            return false;
+        }
+
+        var distinctIds = orderedIds.Distinct().ToList();
+        var scope = BuildUserScope(_context.Series, userId, isAdmin);
+        var items = await scope
+            .Where(s => s.Status == SerieStatus.Watchlist && distinctIds.Contains(s.Id))
+            .ToListAsync();
+
+        if (items.Count == 0)
+        {
+            return false;
+        }
+
+        var position = 1;
+        foreach (var id in distinctIds)
+        {
+            var item = items.FirstOrDefault(x => x.Id == id);
+            if (item is null)
+            {
+                continue;
+            }
+
+            item.WatchlistOrder = position;
+            position++;
+        }
+
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<IReadOnlyList<SearchSuggestionViewModel>> GetSearchSuggestionsAsync(string userId, bool isAdmin, string query, int limit = 6)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return [];
+        }
+
+        var safeLimit = Math.Clamp(limit, 1, 12);
+        var normalizedQuery = query.Trim();
+
+        var queryable = BuildUserScope(_context.Series.AsNoTracking(), userId, isAdmin);
+        return await BuildSearchSuggestionsQuery(queryable, normalizedQuery, safeLimit).ToListAsync();
+    }
+
+    public async Task<IReadOnlyList<SearchSuggestionViewModel>> GetPublicSearchSuggestionsAsync(string query, int limit = 6)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return [];
+        }
+
+        var safeLimit = Math.Clamp(limit, 1, 12);
+        var normalizedQuery = query.Trim();
+
+        var queryable = _context.Series
+            .AsNoTracking()
+            .Where(s => s.Status != SerieStatus.Abandonne);
+
+        return await BuildSearchSuggestionsQuery(queryable, normalizedQuery, safeLimit).ToListAsync();
+    }
+
     public int EstimateRemainingMinutes(Serie item)
     {
         var remainingEpisodes = Math.Max(0, item.TotalEpisodes - item.WatchedEpisodes);
@@ -178,6 +258,27 @@ public class LibraryService : ILibraryService
     private static IQueryable<Serie> BuildUserScope(IQueryable<Serie> query, string userId, bool isAdmin)
     {
         return isAdmin ? query : query.Where(s => s.OwnerId == userId);
+    }
+
+    private static IQueryable<SearchSuggestionViewModel> BuildSearchSuggestionsQuery(
+        IQueryable<Serie> query,
+        string normalizedQuery,
+        int limit)
+    {
+        return query
+            .Where(s => s.Title.Contains(normalizedQuery))
+            .OrderByDescending(s => s.Status == SerieStatus.EnCours)
+            .ThenByDescending(s => s.IsFavorite)
+            .ThenByDescending(s => s.PersonalRating)
+            .ThenBy(s => s.Title)
+            .Take(limit)
+            .Select(s => new SearchSuggestionViewModel
+            {
+                Id = s.Id,
+                Title = s.Title,
+                Subtitle = $"{s.ContentType} | {s.Status} | {s.Genre}",
+                PosterUrl = s.PosterUrl ?? s.BackdropUrl
+            });
     }
 
     private static IQueryable<Serie> ApplyFilters(IQueryable<Serie> query, SeriesQueryOptions options)
@@ -221,6 +322,10 @@ public class LibraryService : ILibraryService
             "title_desc" => query.OrderByDescending(s => s.Title),
             "rating_desc" => query.OrderByDescending(s => s.PersonalRating).ThenBy(s => s.Title),
             "progress_desc" => query.OrderByDescending(s => (double)s.WatchedEpisodes / s.TotalEpisodes).ThenBy(s => s.Title),
+            "watchlist_order" => query
+                .OrderBy(s => s.Status == SerieStatus.Watchlist ? 0 : 1)
+                .ThenBy(s => s.WatchlistOrder ?? int.MaxValue)
+                .ThenByDescending(s => s.DateAdded),
             _ => query.OrderByDescending(s => s.DateAdded).ThenBy(s => s.Title)
         };
     }

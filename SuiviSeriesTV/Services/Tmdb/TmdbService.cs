@@ -148,6 +148,62 @@ public class TmdbService : ITmdbService
         };
     }
 
+    public async Task<TmdbMediaDetailsViewModel?> GetMediaDetailsAsync(string mediaType, int tmdbId, CancellationToken cancellationToken = default)
+    {
+        if (!IsEnabled || tmdbId <= 0 || string.IsNullOrWhiteSpace(mediaType))
+        {
+            return null;
+        }
+
+        var endpoint = mediaType == "movie" ? $"/movie/{tmdbId}" : $"/tv/{tmdbId}";
+        var url = BuildUrl($"{endpoint}?language=fr-FR&append_to_response=videos,credits");
+
+        using var response = await _httpClient.GetAsync(url, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+        var root = document.RootElement;
+
+        var genres = root.TryGetProperty("genres", out var genresNode) && genresNode.ValueKind == JsonValueKind.Array
+            ? genresNode.EnumerateArray()
+                .Select(g => g.GetPropertyOrDefault("name"))
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Take(5)
+                .Cast<string>()
+                .ToList()
+            : [];
+
+        var trailer = root.TryGetProperty("videos", out var videosNode)
+            ? ExtractTrailer(videosNode)
+            : null;
+
+        var cast = root.TryGetProperty("credits", out var creditsNode) && creditsNode.TryGetProperty("cast", out var castNode) && castNode.ValueKind == JsonValueKind.Array
+            ? castNode.EnumerateArray()
+                .Select(c => c.GetPropertyOrDefault("name"))
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Take(6)
+                .Cast<string>()
+                .ToList()
+            : [];
+
+        var runtime = mediaType == "movie"
+            ? root.GetPropertyOrDefaultInt("runtime")
+            : root.GetArrayFirstInt("episode_run_time");
+
+        return new TmdbMediaDetailsViewModel
+        {
+            TrailerUrl = trailer?.Url,
+            TrailerName = trailer?.Name,
+            Cast = cast,
+            Genres = genres,
+            RuntimeMinutes = runtime > 0 ? runtime : null
+        };
+    }
+
     private string BuildUrl(string relative)
     {
         var separator = relative.Contains('?') ? '&' : '?';
@@ -191,7 +247,43 @@ public class TmdbService : ITmdbService
 
         return ContentType.Serie;
     }
+
+    private static TrailerInfo? ExtractTrailer(JsonElement videosNode)
+    {
+        if (!videosNode.TryGetProperty("results", out var resultsNode) || resultsNode.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        var preferred = resultsNode.EnumerateArray()
+            .FirstOrDefault(v =>
+                string.Equals(v.GetPropertyOrDefault("site"), "YouTube", StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(v.GetPropertyOrDefault("type"), "Trailer", StringComparison.OrdinalIgnoreCase));
+
+        if (preferred.ValueKind == JsonValueKind.Undefined)
+        {
+            preferred = resultsNode.EnumerateArray()
+                .FirstOrDefault(v => string.Equals(v.GetPropertyOrDefault("site"), "YouTube", StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (preferred.ValueKind == JsonValueKind.Undefined)
+        {
+            return null;
+        }
+
+        var key = preferred.GetPropertyOrDefault("key");
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return null;
+        }
+
+        return new TrailerInfo(
+            $"https://www.youtube.com/watch?v={key}",
+            preferred.GetPropertyOrDefault("name"));
+    }
 }
+
+internal sealed record TrailerInfo(string Url, string? Name);
 
 internal static class JsonExtensions
 {

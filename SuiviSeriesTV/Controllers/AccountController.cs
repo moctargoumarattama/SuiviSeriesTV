@@ -74,12 +74,12 @@ public class AccountController : Controller
 
         var body = $"""
                     <p>Bonjour,</p>
-                    <p>Merci pour votre inscription sur <strong>SuiviSeriesTV</strong>.</p>
+                    <p>Merci pour votre inscription sur <strong>Zerra TV</strong>.</p>
                     <p>Confirmez votre email en cliquant ici:</p>
                     <p><a href="{callbackUrl}">Confirmer mon compte</a></p>
                     """;
 
-        await _emailService.SendEmailAsync(user.Email!, "Confirmez votre compte SuiviSeriesTV", body);
+        await _emailService.SendEmailAsync(user.Email!, "Confirmez votre compte Zerra TV", body);
 
         return RedirectToAction(nameof(CheckEmail), new { email = user.Email });
     }
@@ -164,7 +164,7 @@ public class AccountController : Controller
                         <p><a href="{callbackUrl}">Confirmer mon email</a></p>
                         """;
 
-            await _emailService.SendEmailAsync(user.Email!, "Confirmation email SuiviSeriesTV", body);
+            await _emailService.SendEmailAsync(user.Email!, "Confirmation email Zerra TV", body);
 
             ModelState.AddModelError(string.Empty, "Email non confirme. Un nouveau lien vient d'etre envoye.");
             return View(model);
