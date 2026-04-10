@@ -1,0 +1,18 @@
+﻿@{
+    ViewData["Title"] = "Verification email";
+    var email = ViewData["Email"] as string;
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-4 p-md-5">
+        <h1 class="h3 mb-3">Verification requise</h1>
+        <p class="mb-2">
+            Un email de confirmation a ete envoye a:
+            <strong>@(string.IsNullOrWhiteSpace(email) ? "votre adresse" : email)</strong>
+        </p>
+        <p class="text-muted mb-0">
+            Ouvrez le lien recu pour activer votre compte puis connectez-vous.
+        </p>
+    </div>
+</div>
+

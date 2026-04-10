@@ -1,0 +1,57 @@
+﻿@model TmdbSearchPageViewModel
+@{
+    ViewData["Title"] = "Importation TMDB";
+}
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+    <h1 class="h3 mb-0">Import depuis TMDB</h1>
+    <a asp-action="Create" class="btn btn-outline-secondary">Retour a l'ajout manuel</a>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" asp-action="TmdbSearch" class="row g-3 align-items-end">
+            <div class="col-md-10">
+                <label class="form-label">Rechercher un film ou une serie</label>
+                <input type="text" name="query" value="@Model.Query" class="form-control" placeholder="Ex: The Last of Us, Dune..." />
+            </div>
+            <div class="col-md-2 d-grid">
+                <button type="submit" class="btn btn-dark">Rechercher</button>
+            </div>
+        </form>
+        @if (!Model.TmdbEnabled)
+        {
+            <p class="text-warning mt-3 mb-0">TMDB est desactive. Renseignez `Tmdb:ApiKey` puis activez `Tmdb:Enabled`.</p>
+        }
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+{
+    <div class="alert alert-info">@Model.ErrorMessage</div>
+}
+
+@if (Model.Results.Any())
+{
+    <div class="row g-3">
+        @foreach (var item in Model.Results)
+        {
+            <div class="col-md-6">
+                <article class="content-card h-100">
+                    <div class="d-flex gap-3 p-3">
+                        <img src="@(item.PosterUrl ?? "https://via.placeholder.com/120x170?text=Sans+Affiche")" width="96" height="136" class="rounded-3 object-fit-cover" alt="Poster @item.Title" />
+                        <div>
+                            <h2 class="h5 mb-1">@item.Title</h2>
+                            <p class="small text-muted mb-2">@item.MediaType - @(item.ReleaseDate?.ToString("yyyy") ?? "-") - Note TMDB @(item.VoteAverage?.ToString("0.0") ?? "-")</p>
+                            <p class="small clamp-2 mb-3">@item.Overview</p>
+                            <a asp-action="CreateFromTmdb" asp-route-mediaType="@item.MediaType" asp-route-tmdbId="@item.TmdbId" class="btn btn-sm btn-primary">
+                                Importer ce contenu
+                            </a>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        }
+    </div>
+}
+

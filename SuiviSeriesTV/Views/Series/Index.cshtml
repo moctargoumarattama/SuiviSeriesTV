@@ -1,0 +1,192 @@
+﻿@model SeriesIndexViewModel
+@{
+    ViewData["Title"] = "Bibliotheque";
+}
+
+<section class="hero-strip mb-4 p-4 rounded-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+            <h1 class="h3 mb-1">Bibliotheque premium</h1>
+            <p class="text-muted mb-0">Gerez vos series, films et anime avec une progression claire et des actions rapides.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="Dashboard" class="btn btn-outline-secondary">Tableau de bord</a>
+            <a asp-action="Calendar" class="btn btn-outline-secondary">Calendrier</a>
+            <a asp-action="ExportCsv" class="btn btn-outline-secondary">Exporter CSV</a>
+            <a asp-action="Create" class="btn btn-primary">Ajouter un contenu</a>
+        </div>
+    </div>
+</section>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="mini-stat-card">
+            <span>A voir</span>
+            <strong>@Model.WatchlistCount</strong>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="mini-stat-card">
+            <span>En cours</span>
+            <strong>@Model.InProgressCount</strong>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="mini-stat-card">
+            <span>Termine</span>
+            <strong>@Model.CompletedCount</strong>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="mini-stat-card">
+            <span>Favoris</span>
+            <strong>@Model.FavoritesCount</strong>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" asp-action="Index" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Recherche</label>
+                <input class="form-control" type="text" name="searchTerm" value="@Model.SearchTerm" placeholder="Titre ou synopsis..." />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Genre</label>
+                <select class="form-select" name="genre">
+                    <option value="">Tous</option>
+                    @foreach (var genre in Model.Genres)
+                    {
+                        <option value="@genre" selected="@(Model.Genre == genre ? "selected" : null)">@genre</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Type</label>
+                <select class="form-select" name="contentType">
+                    <option value="">Tous</option>
+                    @foreach (var item in Html.GetEnumSelectList<ContentType>())
+                    {
+                        <option value="@item.Value" selected="@(Model.ContentType.HasValue && item.Value == ((int)Model.ContentType.Value).ToString() ? "selected" : null)">
+                            @item.Text
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Statut</label>
+                <select class="form-select" name="status">
+                    <option value="">Tous</option>
+                    @foreach (var item in Html.GetEnumSelectList<SerieStatus>())
+                    {
+                        <option value="@item.Value" selected="@(Model.Status.HasValue && item.Value == ((int)Model.Status.Value).ToString() ? "selected" : null)">
+                            @item.Text
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Tri</label>
+                <select class="form-select" name="sortBy">
+                    <option value="date_desc" selected="@(Model.SortBy == "date_desc" ? "selected" : null)">Ajouts recents</option>
+                    <option value="date_asc" selected="@(Model.SortBy == "date_asc" ? "selected" : null)">Ajouts anciens</option>
+                    <option value="title_asc" selected="@(Model.SortBy == "title_asc" ? "selected" : null)">Titre A-Z</option>
+                    <option value="title_desc" selected="@(Model.SortBy == "title_desc" ? "selected" : null)">Titre Z-A</option>
+                    <option value="rating_desc" selected="@(Model.SortBy == "rating_desc" ? "selected" : null)">Top notes</option>
+                    <option value="progress_desc" selected="@(Model.SortBy == "progress_desc" ? "selected" : null)">Progression</option>
+                </select>
+            </div>
+            <div class="col-md-1">
+                <div class="form-check mt-4">
+                    <input class="form-check-input" type="checkbox" id="favoritesOnly" name="favoritesOnly" value="true" checked="@Model.FavoritesOnly" />
+                    <label class="form-check-label" for="favoritesOnly">Favoris</label>
+                </div>
+            </div>
+            <div class="col-12 d-flex gap-2">
+                <button class="btn btn-dark" type="submit">Appliquer</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Reinitialiser</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (!Model.Series.Any())
+{
+    <div class="empty-state card border-0 shadow-sm">
+        <div class="card-body p-5 text-center">
+            <h2 class="h5">Aucun contenu trouve</h2>
+            <p class="text-muted mb-4">Ajustez les filtres ou ajoutez un contenu pour demarrer votre suivi.</p>
+            <a asp-action="Create" class="btn btn-primary">Ajouter maintenant</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var item in Model.Series)
+        {
+            var progress = item.ProgressPercentage;
+            <div class="col-sm-6 col-lg-4">
+                <article class="content-card h-100">
+                    <div class="content-cover" style="background-image:url('@(string.IsNullOrWhiteSpace(item.BackdropUrl) ? item.PosterUrl : item.BackdropUrl)')">
+                        <div class="content-overlay"></div>
+                        <div class="d-flex justify-content-between align-items-start p-3">
+                            <span class="badge rounded-pill bg-dark-subtle text-dark">@item.ContentType</span>
+                            @if (item.IsFavorite)
+                            {
+                                <span class="badge rounded-pill text-bg-warning">Favori</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="p-3">
+                        <div class="d-flex justify-content-between gap-2">
+                            <h3 class="h5 mb-1">@item.Title</h3>
+                            <span class="badge status-badge">@item.Status</span>
+                        </div>
+                        <p class="text-muted small mb-2">@item.Genre - @item.StreamingPlatform</p>
+                        <p class="small text-muted clamp-2 mb-3">@item.Description</p>
+
+                        <div class="mb-2 d-flex justify-content-between small text-muted">
+                            <span>Progression</span>
+                            <span>@item.WatchedEpisodes/@item.TotalEpisodes</span>
+                        </div>
+                        <div class="progress mb-3">
+                            <div class="progress-bar" style="width:@progress%;">@progress%</div>
+                        </div>
+
+                        <div class="d-flex gap-1 flex-wrap">
+                            <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Voir</a>
+                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Modifier</a>
+                            <form asp-action="MarkAsWatched" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@item.Id" />
+                                <button type="submit" class="btn btn-sm btn-success">+ Vu</button>
+                            </form>
+                            <form asp-action="ToggleFavorite" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@item.Id" />
+                                <button type="submit" class="btn btn-sm btn-outline-warning">Favoris</button>
+                            </form>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        }
+    </div>
+
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(Model.HasPreviousPage ? "" : "disabled")">
+                <a class="page-link" href="@Model.BuildPageUrl(Model.Page - 1)">Precedent</a>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link">Page @Model.Page / @Model.TotalPages</span>
+            </li>
+            <li class="page-item @(Model.HasNextPage ? "" : "disabled")">
+                <a class="page-link" href="@Model.BuildPageUrl(Model.Page + 1)">Suivant</a>
+            </li>
+        </ul>
+    </nav>
+}
+

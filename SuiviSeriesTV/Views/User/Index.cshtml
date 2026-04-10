@@ -1,0 +1,111 @@
+﻿@model UserDashboardViewModel
+@{
+    ViewData["Title"] = "Tableau de bord utilisateur";
+}
+
+<section class="hero-section p-4 rounded-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <h1 class="h3 mb-1">Tableau de bord utilisateur</h1>
+            <p class="text-muted mb-0">Vue rapide de votre progression et de vos contenus recents.</p>
+        </div>
+        <a asp-controller="Series" asp-action="Create" class="btn btn-primary">Ajouter une serie</a>
+    </div>
+</section>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <p class="text-uppercase text-muted small mb-1">Total</p>
+                <h2 class="display-6 mb-0">@Model.TotalSeries</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <p class="text-uppercase text-muted small mb-1">Termine</p>
+                <h2 class="display-6 mb-0">@Model.CompletedSeries</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <p class="text-uppercase text-muted small mb-1">En cours</p>
+                <h2 class="display-6 mb-0">@Model.InProgressSeries</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <p class="text-uppercase text-muted small mb-1">A voir</p>
+                <h2 class="display-6 mb-0">@Model.ToWatchSeries</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <h3 class="h5 mb-3">Moyenne de vos notes</h3>
+        <div class="d-flex align-items-center gap-3">
+            <div class="rating-circle">@Model.AverageRating.ToString("0.00")</div>
+            <p class="mb-0">Votre moyenne actuelle est de <strong>@Model.AverageRating.ToString("0.00") / 10</strong>.</p>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="h5 mb-0">Contenus recents</h3>
+            <a asp-controller="Series" asp-action="Index" class="btn btn-sm btn-outline-secondary">Voir tout</a>
+        </div>
+
+        @if (!Model.RecentSeries.Any())
+        {
+            <div class="alert alert-info mb-0">Aucun contenu pour le moment. Commencez par en ajouter un.</div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Titre</th>
+                            <th>Genre</th>
+                            <th>Statut</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var serie in Model.RecentSeries)
+                        {
+                            <tr>
+                                <td>@serie.Title</td>
+                                <td>@serie.Genre</td>
+                                <td>
+                                    @(serie.Status switch
+                                    {
+                                        SerieStatus.Watchlist => "A voir",
+                                        SerieStatus.EnCours => "En cours",
+                                        SerieStatus.Termine => "Termine",
+                                        SerieStatus.Abandonne => "Abandonne",
+                                        _ => serie.Status.ToString()
+                                    })
+                                </td>
+                                <td class="text-end">
+                                    <a asp-controller="Series" asp-action="Details" asp-route-id="@serie.Id" class="btn btn-sm btn-outline-primary">Voir</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+

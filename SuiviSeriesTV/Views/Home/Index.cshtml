@@ -1,0 +1,152 @@
+﻿@model HomeIndexViewModel
+@{
+    ViewData["Title"] = "Accueil";
+}
+
+<section class="home-hero rounded-4 p-4 p-md-5 mb-4">
+    <div class="row g-4 align-items-center">
+        <div class="col-lg-7">
+            <p class="hero-kicker mb-2">EXPERIENCE APPLE GLASS</p>
+            <h1 class="hero-title mb-3">
+                Suivi moderne de
+                <span class="hero-title-accent">series, films et anime</span>
+            </h1>
+            <p class="hero-subtitle mb-4">Une interface elegante, rapide et prete pour un usage reel.</p>
+
+            <div class="d-flex flex-wrap gap-2 mb-4">
+                @if (Model.IsAuthenticated)
+                {
+                    <a class="btn btn-primary btn-lg px-4" asp-controller="Series" asp-action="Dashboard">Ouvrir le tableau de bord</a>
+                    <a class="btn btn-outline-secondary btn-lg px-4" asp-controller="Series" asp-action="Index">Voir ma bibliotheque</a>
+                }
+                else
+                {
+                    <a class="btn btn-primary btn-lg px-4" asp-controller="Account" asp-action="Register">Creer un compte</a>
+                    <a class="btn btn-outline-secondary btn-lg px-4" asp-controller="Account" asp-action="Login">Se connecter</a>
+                }
+            </div>
+
+            <div class="hero-tags">
+                <span class="hero-tag">A regarder ensuite</span>
+                <span class="hero-tag">Sorties de la semaine</span>
+                <span class="hero-tag">Statistiques claires</span>
+                <span class="hero-tag">Mode sombre</span>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <aside class="holo-panel orbit-panel">
+                <h2 class="h6 text-uppercase mb-3">Apercu rapide</h2>
+                <div class="signal-list">
+                    <div class="signal-item">
+                        <span>Tendance</span>
+                        <strong>@Model.TrendingMovies.Count film(s) mis en avant</strong>
+                    </div>
+                    <div class="signal-item">
+                        <span>Recommandations</span>
+                        <strong>@Model.RecommendedMovies.Count suggestion(s)</strong>
+                    </div>
+                    <div class="signal-item">
+                        <span>Genres</span>
+                        <strong>@Model.GenreCards.Count categorie(s)</strong>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+</section>
+
+<section class="mb-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <h2 class="h4 mb-0">Films tendances</h2>
+        <a asp-controller="Series" asp-action="Index" class="btn btn-outline-secondary btn-sm">Voir toute la bibliotheque</a>
+    </div>
+    @if (!Model.TrendingMovies.Any())
+    {
+        <div class="card border-0">
+            <div class="card-body text-center p-4">
+                <p class="mb-0 text-muted">Aucun film tendance pour le moment.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var item in Model.TrendingMovies)
+            {
+                <div class="col-6 col-md-4 col-xl-2">
+                    <article class="trend-card h-100">
+                        <a asp-controller="Series" asp-action="Details" asp-route-id="@item.Id" class="text-decoration-none d-block h-100">
+                            <div class="trend-card-media" style="background-image:url('@(item.PosterUrl ?? item.BackdropUrl)')"></div>
+                            <div class="p-2 p-md-3">
+                                <h3 class="h6 mb-1 clamp-2">@item.Title</h3>
+                                <p class="small text-muted mb-2">@item.Genre</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="badge status-badge">@item.Status</span>
+                                    <small class="text-muted">@item.PersonalRating.ToString("0.0")/10</small>
+                                </div>
+                            </div>
+                        </a>
+                    </article>
+                </div>
+            }
+        </div>
+    }
+</section>
+
+<section class="mb-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <h2 class="h4 mb-0">Recommandations pour vous</h2>
+        @if (Model.IsAuthenticated)
+        {
+            <a asp-controller="Series" asp-action="Dashboard" class="btn btn-outline-secondary btn-sm">Ouvrir le tableau de bord</a>
+        }
+        else
+        {
+            <a asp-controller="Account" asp-action="Register" class="btn btn-outline-secondary btn-sm">Creer un compte</a>
+        }
+    </div>
+    @if (!Model.RecommendedMovies.Any())
+    {
+        <div class="card border-0">
+            <div class="card-body text-center p-4">
+                <p class="mb-0 text-muted">Aucune recommandation disponible pour l'instant.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var item in Model.RecommendedMovies)
+            {
+                <div class="col-6 col-md-4 col-xl-2">
+                    <article class="trend-card h-100">
+                        <a asp-controller="Series" asp-action="Details" asp-route-id="@item.Id" class="text-decoration-none d-block h-100">
+                            <div class="trend-card-media" style="background-image:url('@(item.BackdropUrl ?? item.PosterUrl)')"></div>
+                            <div class="p-2 p-md-3">
+                                <h3 class="h6 mb-1 clamp-2">@item.Title</h3>
+                                <p class="small text-muted mb-2">@item.StreamingPlatform</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="badge status-badge">@item.ContentType</span>
+                                    <small class="text-muted">@item.ProgressPercentage%</small>
+                                </div>
+                            </div>
+                        </a>
+                    </article>
+                </div>
+            }
+        </div>
+    }
+</section>
+
+<section class="mb-2">
+    <h2 class="h4 mb-3">Parcourir par genre</h2>
+    <div class="genre-grid">
+        @foreach (var card in Model.GenreCards)
+        {
+            <a asp-controller="Series" asp-action="Index" asp-route-genre="@card.Genre" class="genre-tile text-decoration-none" style="background-image:url('@card.CoverUrl')">
+                <span>@card.Genre</span>
+            </a>
+        }
+    </div>
+</section>
+

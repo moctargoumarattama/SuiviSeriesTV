@@ -1,0 +1,124 @@
+﻿@model Serie
+@{
+    ViewData["Title"] = "Modifier un contenu";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">Modifier un contenu</h1>
+    <a asp-action="Index" class="btn btn-outline-secondary">Retour</a>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <form asp-action="Edit" method="post" enctype="multipart/form-data" class="row g-3">
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="TmdbId" />
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="col-md-3">
+                <label asp-for="ContentType" class="form-label"></label>
+                <select asp-for="ContentType" asp-items="Html.GetEnumSelectList<ContentType>()" class="form-select"></select>
+            </div>
+            <div class="col-md-5">
+                <label asp-for="Title" class="form-label"></label>
+                <input asp-for="Title" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label asp-for="Genre" class="form-label"></label>
+                <input asp-for="Genre" class="form-control" />
+            </div>
+
+            <div class="col-12">
+                <label asp-for="Description" class="form-label"></label>
+                <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+            </div>
+
+            <div class="col-md-3">
+                <label asp-for="Status" class="form-label"></label>
+                <select asp-for="Status" asp-items="Html.GetEnumSelectList<SerieStatus>()" class="form-select"></select>
+            </div>
+            <div class="col-md-3">
+                <label asp-for="SeasonsCount" class="form-label"></label>
+                <input asp-for="SeasonsCount" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <label asp-for="TotalEpisodes" class="form-label"></label>
+                <input asp-for="TotalEpisodes" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <label asp-for="WatchedEpisodes" class="form-label"></label>
+                <input asp-for="WatchedEpisodes" class="form-control" />
+            </div>
+
+            <div class="col-md-3">
+                <label asp-for="LastWatchedSeason" class="form-label"></label>
+                <input asp-for="LastWatchedSeason" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <label asp-for="LastWatchedEpisode" class="form-label"></label>
+                <input asp-for="LastWatchedEpisode" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <label asp-for="PersonalRating" class="form-label"></label>
+                <input asp-for="PersonalRating" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <label asp-for="AverageEpisodeRuntimeMinutes" class="form-label"></label>
+                <input asp-for="AverageEpisodeRuntimeMinutes" class="form-control" />
+            </div>
+
+            <div class="col-md-4">
+                <label asp-for="StreamingPlatform" class="form-label"></label>
+                <input asp-for="StreamingPlatform" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label asp-for="DateAdded" class="form-label"></label>
+                <input asp-for="DateAdded" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label asp-for="ReleaseDate" class="form-label"></label>
+                <input asp-for="ReleaseDate" class="form-control" />
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="NextReleaseDate" class="form-label"></label>
+                <input asp-for="NextReleaseDate" class="form-control" />
+            </div>
+            <div class="col-md-6 d-flex align-items-end">
+                <div class="form-check mb-2">
+                    <input asp-for="IsFavorite" class="form-check-input" />
+                    <label asp-for="IsFavorite" class="form-check-label"></label>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="PosterUrl" class="form-label"></label>
+                <input asp-for="PosterUrl" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label asp-for="BackdropUrl" class="form-label"></label>
+                <input asp-for="BackdropUrl" class="form-control" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Remplacer l'affiche (fichier local)</label>
+                <input type="file" name="posterFile" class="form-control" accept=".jpg,.jpeg,.png,.webp" />
+            </div>
+
+            <div class="col-12">
+                <label asp-for="PersonalComment" class="form-label"></label>
+                <textarea asp-for="PersonalComment" class="form-control" rows="3"></textarea>
+            </div>
+
+            <div class="col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Sauvegarder</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Annuler</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
+

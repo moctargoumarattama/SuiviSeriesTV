@@ -1,0 +1,45 @@
+﻿@model AdminDashboardViewModel
+@{
+    ViewData["Title"] = "Tableau de bord admin";
+}
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+    <h1 class="h3 mb-0">Tableau de bord administrateur</h1>
+    <a asp-action="Users" class="btn btn-dark">Gerer les utilisateurs</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6 col-lg-3">
+        <div class="card stat-card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <p class="text-uppercase text-muted small mb-1">Utilisateurs</p>
+                <h2 class="display-6 mb-0">@Model.TotalUsers</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card stat-card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <p class="text-uppercase text-muted small mb-1">Administrateurs</p>
+                <h2 class="display-6 mb-0">@Model.TotalAdmins</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card stat-card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <p class="text-uppercase text-muted small mb-1">Emails confirmes</p>
+                <h2 class="display-6 mb-0">@Model.ConfirmedEmails</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card stat-card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <p class="text-uppercase text-muted small mb-1">Comptes bloques</p>
+                <h2 class="display-6 mb-0">@Model.LockedUsers</h2>
+            </div>
+        </div>
+    </div>
+</div>
+

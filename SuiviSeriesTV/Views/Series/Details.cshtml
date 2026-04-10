@@ -1,0 +1,106 @@
+﻿@model Serie
+@{
+    ViewData["Title"] = "Fiche contenu";
+}
+
+<section class="detail-hero rounded-4 mb-4" style="background-image:url('@(Model.BackdropUrl ?? Model.PosterUrl)')">
+    <div class="detail-hero-overlay rounded-4 p-4 p-md-5">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                <span class="badge rounded-pill bg-light text-dark mb-2">@Model.ContentType</span>
+                <h1 class="display-6 text-white fw-bold mb-2">@Model.Title</h1>
+                <p class="text-white-50 mb-0">@Model.Genre - @Model.StreamingPlatform</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-light">Modifier</a>
+                <form asp-action="MarkAsWatched" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <button type="submit" class="btn btn-success">Marquer comme vu</button>
+                </form>
+                <a asp-action="Index" class="btn btn-outline-light">Retour</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                @if (!string.IsNullOrWhiteSpace(Model.PosterUrl))
+                {
+                    <img src="@Model.PosterUrl" class="img-fluid rounded-3 mb-3" alt="Affiche @Model.Title" />
+                }
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <span class="badge text-bg-dark">@Model.Status</span>
+                    @if (Model.IsFavorite)
+                    {
+                        <span class="badge text-bg-warning">Favori</span>
+                    }
+                    <span class="badge text-bg-secondary">@Model.PersonalRating.ToString("0.0")/10</span>
+                </div>
+                <p class="text-muted mb-0">@Model.Description</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Progression</h2>
+                <div class="d-flex justify-content-between small text-muted mb-2">
+                    <span>@Model.WatchedEpisodes / @Model.TotalEpisodes episode(s)</span>
+                    <span>@Model.ProgressPercentage%</span>
+                </div>
+                <div class="progress mb-3">
+                    <div class="progress-bar" style="width:@Model.ProgressPercentage%;">@Model.ProgressPercentage%</div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="detail-cell">
+                            <span>Saisons</span>
+                            <strong>@Model.SeasonsCount</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="detail-cell">
+                            <span>Derniere saison vue</span>
+                            <strong>@Model.LastWatchedSeason</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="detail-cell">
+                            <span>Dernier episode vu</span>
+                            <strong>@Model.LastWatchedEpisode</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Informations complementaires</h2>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="detail-cell"><span>Date d'ajout</span><strong>@Model.DateAdded.ToString("dd/MM/yyyy")</strong></div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="detail-cell"><span>Date de sortie</span><strong>@(Model.ReleaseDate?.ToString("dd/MM/yyyy") ?? "-")</strong></div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="detail-cell"><span>Prochaine sortie</span><strong>@(Model.NextReleaseDate?.ToString("dd/MM/yyyy") ?? "-")</strong></div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="detail-cell"><span>Duree moyenne</span><strong>@(Model.AverageEpisodeRuntimeMinutes?.ToString() ?? "-") min</strong></div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="detail-cell"><span>Commentaire personnel</span><strong>@(string.IsNullOrWhiteSpace(Model.PersonalComment) ? "-" : Model.PersonalComment)</strong></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

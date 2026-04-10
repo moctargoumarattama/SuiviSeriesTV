@@ -1,0 +1,16 @@
+﻿@{
+    ViewData["Title"] = "Confirmation email";
+    var success = ViewData["Success"] as bool? ?? false;
+    var status = ViewData["Status"] as string ?? "Statut indisponible.";
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-4 p-md-5">
+        <h1 class="h3 mb-3">Confirmation du compte</h1>
+        <div class="alert @(success ? "alert-success" : "alert-danger") mb-4">
+            @status
+        </div>
+        <a asp-action="Login" class="btn btn-primary">Aller a la connexion</a>
+    </div>
+</div>
+

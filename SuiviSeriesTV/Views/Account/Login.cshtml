@@ -1,0 +1,51 @@
+﻿@model LoginViewModel
+@{
+    ViewData["Title"] = "Connexion";
+}
+
+<div class="auth-shell">
+    <div class="auth-card card border-0 shadow-lg">
+        <div class="card-body p-4 p-md-5">
+            <h1 class="h3 mb-2">Connexion</h1>
+            <p class="text-muted mb-4">Accedez a votre espace personnel.</p>
+
+            <form asp-action="Login" method="post" class="row g-3">
+                <input type="hidden" asp-for="ReturnUrl" />
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                <div class="col-12">
+                    <label asp-for="Email" class="form-label"></label>
+                    <input asp-for="Email" class="form-control form-control-lg" />
+                    <span asp-validation-for="Email" class="text-danger"></span>
+                </div>
+
+                <div class="col-12">
+                    <label asp-for="Password" class="form-label"></label>
+                    <input asp-for="Password" class="form-control form-control-lg" />
+                    <span asp-validation-for="Password" class="text-danger"></span>
+                </div>
+
+                <div class="col-12">
+                    <div class="form-check">
+                        <input asp-for="RememberMe" class="form-check-input" />
+                        <label asp-for="RememberMe" class="form-check-label"></label>
+                    </div>
+                </div>
+
+                <div class="col-12 d-grid">
+                    <button type="submit" class="btn btn-primary btn-lg">Se connecter</button>
+                </div>
+            </form>
+
+            <p class="mt-4 mb-0 text-muted">
+                Pas encore de compte ?
+                <a asp-action="Register">Inscription</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
+
