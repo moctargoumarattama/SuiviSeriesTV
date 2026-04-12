@@ -48,6 +48,35 @@
     </div>
 </section>
 
+<section class="mb-4 reveal premium-section">
+    <div class="card border-0 shadow-sm premium-panel">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-lg-8">
+                    <h2 class="h5 mb-3">Parametres du compte</h2>
+                    <form asp-action="UpdateProfileName" method="post" class="row g-2 align-items-end">
+                        @Html.AntiForgeryToken()
+                        <div class="col-md-8">
+                            <label class="form-label">Nom utilisateur</label>
+                            <input type="text" name="displayName" value="@Model.DisplayName" class="form-control" minlength="3" maxlength="32" required />
+                        </div>
+                        <div class="col-md-4 d-grid">
+                            <button type="submit" class="btn btn-outline-secondary">Mettre a jour le nom</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="col-lg-4">
+                    <h3 class="h6 text-danger mb-2">Zone sensible</h3>
+                    <form asp-action="DeleteMyAccount" method="post" onsubmit="return confirm('Voulez-vous vraiment supprimer votre compte ? Cette action est irreversible.');">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-outline-danger w-100">Supprimer mon compte</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <div class="row g-3 mb-4 reveal premium-section">
     <div class="col-6 col-md-4 col-xl-2"><div class="mini-stat-card"><span>Total</span><strong>@Model.TotalSeries</strong></div></div>
     <div class="col-6 col-md-4 col-xl-2"><div class="mini-stat-card"><span>Termine</span><strong>@Model.CompletedSeries</strong></div></div>

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
@@ -16,11 +17,19 @@ public class UserController : Controller
 {
     private readonly ApplicationDbContext _context;
     private readonly ILibraryService _libraryService;
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly SignInManager<ApplicationUser> _signInManager;
 
-    public UserController(ApplicationDbContext context, ILibraryService libraryService)
+    public UserController(
+        ApplicationDbContext context,
+        ILibraryService libraryService,
+        UserManager<ApplicationUser> userManager,
+        SignInManager<ApplicationUser> signInManager)
     {
         _context = context;
         _libraryService = libraryService;
+        _userManager = userManager;
+        _signInManager = signInManager;
     }
 
     [HttpGet]
@@ -128,6 +137,74 @@ public class UserController : Controller
         };
 
         return View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateProfileName(string displayName)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return Challenge();
+        }
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null)
+        {
+            TempData["ErrorMessage"] = "Utilisateur introuvable.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var trimmed = (displayName ?? string.Empty).Trim();
+        if (trimmed.Length < 3 || trimmed.Length > 32)
+        {
+            TempData["ErrorMessage"] = "Le nom d'utilisateur doit contenir entre 3 et 32 caracteres.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var result = await _userManager.SetUserNameAsync(user, trimmed);
+        if (!result.Succeeded)
+        {
+            TempData["ErrorMessage"] = "Renommage impossible: " + string.Join("; ", result.Errors.Select(e => e.Description));
+            return RedirectToAction(nameof(Index));
+        }
+
+        TempData["SuccessMessage"] = "Nom utilisateur mis a jour.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteMyAccount()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return Challenge();
+        }
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null)
+        {
+            TempData["ErrorMessage"] = "Compte introuvable.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var ownedSeries = _context.Series.Where(s => s.OwnerId == userId);
+        _context.Series.RemoveRange(ownedSeries);
+        await _context.SaveChangesAsync();
+
+        var deleteResult = await _userManager.DeleteAsync(user);
+        if (!deleteResult.Succeeded)
+        {
+            TempData["ErrorMessage"] = "Suppression impossible: " + string.Join("; ", deleteResult.Errors.Select(e => e.Description));
+            return RedirectToAction(nameof(Index));
+        }
+
+        await _signInManager.SignOutAsync();
+        TempData["SuccessMessage"] = "Votre compte a ete supprime.";
+        return RedirectToAction("Index", "Home");
     }
 
     private static string ResolveProfileTier(int total, double completionRate, double avgRating)

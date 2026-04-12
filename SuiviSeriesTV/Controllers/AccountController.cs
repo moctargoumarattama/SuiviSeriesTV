@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
+using System.Text;
 using SuiviSeriesTV.Constants;
 using SuiviSeriesTV.Models;
 using SuiviSeriesTV.Services;
@@ -66,10 +68,11 @@ public class AccountController : Controller
         await _userManager.AddToRoleAsync(user, AppRoles.User);
 
         var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
         var callbackUrl = Url.Action(
             nameof(ConfirmEmail),
             "Account",
-            new { userId = user.Id, token },
+            new { userId = user.Id, code = encodedToken },
             protocol: Request.Scheme);
 
         var body = $"""
@@ -94,9 +97,9 @@ public class AccountController : Controller
 
     [AllowAnonymous]
     [HttpGet]
-    public async Task<IActionResult> ConfirmEmail(string? userId, string? token)
+    public async Task<IActionResult> ConfirmEmail(string? userId, string? code, string? token)
     {
-        if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(token))
+        if (string.IsNullOrWhiteSpace(userId) || (string.IsNullOrWhiteSpace(code) && string.IsNullOrWhiteSpace(token)))
         {
             ViewData["Status"] = "Lien invalide.";
             ViewData["Success"] = false;
@@ -111,11 +114,44 @@ public class AccountController : Controller
             return View();
         }
 
-        var result = await _userManager.ConfirmEmailAsync(user, token);
+        if (user.EmailConfirmed)
+        {
+            ViewData["Success"] = true;
+            ViewData["Status"] = "Votre email est deja confirme. Vous pouvez vous connecter.";
+            return View();
+        }
+
+        var rawToken = token;
+        if (!string.IsNullOrWhiteSpace(rawToken))
+        {
+            rawToken = rawToken.Replace(' ', '+');
+        }
+
+        if (string.IsNullOrWhiteSpace(rawToken) && !string.IsNullOrWhiteSpace(code))
+        {
+            try
+            {
+                rawToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code));
+            }
+            catch
+            {
+                ViewData["Status"] = "Lien de confirmation invalide.";
+                ViewData["Success"] = false;
+                return View();
+            }
+        }
+
+        var result = await _userManager.ConfirmEmailAsync(user, rawToken!);
         ViewData["Success"] = result.Succeeded;
-        ViewData["Status"] = result.Succeeded
-            ? "Votre email a bien ete confirme. Vous pouvez maintenant vous connecter."
-            : "Echec de confirmation. Le lien a peut-etre expire.";
+        if (result.Succeeded)
+        {
+            ViewData["Status"] = "Votre email a bien ete confirme. Vous pouvez maintenant vous connecter.";
+        }
+        else
+        {
+            var reason = result.Errors.FirstOrDefault()?.Description ?? "Token invalide.";
+            ViewData["Status"] = $"Echec de confirmation. {reason}";
+        }
 
         return View();
     }
@@ -152,10 +188,11 @@ public class AccountController : Controller
         if (!user.EmailConfirmed)
         {
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
             var callbackUrl = Url.Action(
                 nameof(ConfirmEmail),
                 "Account",
-                new { userId = user.Id, token },
+                new { userId = user.Id, code = encodedToken },
                 protocol: Request.Scheme);
 
             var body = $"""

@@ -58,7 +58,9 @@ public class AdminController : Controller
         var query = _userManager.Users.AsQueryable();
         if (!string.IsNullOrWhiteSpace(search))
         {
-            query = query.Where(u => u.Email != null && u.Email.Contains(search));
+            query = query.Where(u =>
+                (u.Email != null && u.Email.Contains(search)) ||
+                (u.UserName != null && u.UserName.Contains(search)));
         }
 
         var users = await query.OrderBy(u => u.Email).ToListAsync();
@@ -69,6 +71,7 @@ public class AdminController : Controller
             {
                 Id = user.Id,
                 Email = user.Email ?? "(sans email)",
+                UserName = user.UserName ?? "(sans nom)",
                 EmailConfirmed = user.EmailConfirmed,
                 IsAdmin = await _userManager.IsInRoleAsync(user, AppRoles.Admin),
                 IsLocked = IsLocked(user),
@@ -117,7 +120,8 @@ public class AdminController : Controller
             return RedirectToAction(nameof(Users));
         }
 
-        if (string.Equals(User.Identity?.Name, user.Email, StringComparison.OrdinalIgnoreCase))
+        var currentUserId = _userManager.GetUserId(User);
+        if (string.Equals(currentUserId, user.Id, StringComparison.Ordinal))
         {
             TempData["ErrorMessage"] = "Vous ne pouvez pas modifier votre propre role admin ici.";
             return RedirectToAction(nameof(Users));
@@ -140,6 +144,35 @@ public class AdminController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RenameUser(string id, string newUserName)
+    {
+        var user = await _userManager.FindByIdAsync(id);
+        if (user is null)
+        {
+            TempData["ErrorMessage"] = "Utilisateur introuvable.";
+            return RedirectToAction(nameof(Users));
+        }
+
+        var trimmed = (newUserName ?? string.Empty).Trim();
+        if (trimmed.Length < 3 || trimmed.Length > 32)
+        {
+            TempData["ErrorMessage"] = "Le nom utilisateur doit contenir entre 3 et 32 caracteres.";
+            return RedirectToAction(nameof(Users));
+        }
+
+        var result = await _userManager.SetUserNameAsync(user, trimmed);
+        if (!result.Succeeded)
+        {
+            TempData["ErrorMessage"] = "Renommage impossible: " + string.Join("; ", result.Errors.Select(e => e.Description));
+            return RedirectToAction(nameof(Users));
+        }
+
+        TempData["SuccessMessage"] = $"Nom utilisateur mis a jour pour {user.Email}.";
+        return RedirectToAction(nameof(Users));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteUser(string id)
     {
         var user = await _userManager.FindByIdAsync(id);
@@ -149,7 +182,8 @@ public class AdminController : Controller
             return RedirectToAction(nameof(Users));
         }
 
-        if (string.Equals(User.Identity?.Name, user.Email, StringComparison.OrdinalIgnoreCase))
+        var currentUserId = _userManager.GetUserId(User);
+        if (string.Equals(currentUserId, user.Id, StringComparison.Ordinal))
         {
             TempData["ErrorMessage"] = "Vous ne pouvez pas supprimer votre propre compte.";
             return RedirectToAction(nameof(Users));

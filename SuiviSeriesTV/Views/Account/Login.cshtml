@@ -21,7 +21,12 @@
 
                 <div class="col-12">
                     <label asp-for="Password" class="form-label"></label>
-                    <input asp-for="Password" class="form-control form-control-lg" />
+                    <div class="input-group input-group-lg">
+                        <input asp-for="Password" class="form-control" id="loginPasswordInput" />
+                        <button type="button" class="btn btn-outline-secondary" id="togglePasswordBtn" aria-label="Afficher ou masquer le mot de passe">
+                            Afficher
+                        </button>
+                    </div>
                     <span asp-validation-for="Password" class="text-danger"></span>
                 </div>
 
@@ -47,5 +52,18 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const passwordInput = document.getElementById('loginPasswordInput');
+            const toggleBtn = document.getElementById('togglePasswordBtn');
+            if (!passwordInput || !toggleBtn) return;
+
+            toggleBtn.addEventListener('click', () => {
+                const visible = passwordInput.type === 'text';
+                passwordInput.type = visible ? 'password' : 'text';
+                toggleBtn.textContent = visible ? 'Afficher' : 'Masquer';
+            });
+        })();
+    </script>
 }
 

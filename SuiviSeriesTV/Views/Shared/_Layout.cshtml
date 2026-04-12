@@ -136,13 +136,30 @@
                 root.setAttribute('data-theme', theme);
                 text.textContent = theme === 'dark' ? 'Clair' : 'Sombre';
             };
+            const resetTransitionState = () => {
+                document.body.classList.remove('page-transitioning');
+                veil?.classList.remove('is-active');
+            };
 
             applyTheme(initial);
+            resetTransitionState();
 
             toggle?.addEventListener('click', () => {
                 const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
                 localStorage.setItem('theme', next);
                 applyTheme(next);
+            });
+
+            window.addEventListener('pageshow', () => {
+                resetTransitionState();
+            });
+            window.addEventListener('popstate', () => {
+                resetTransitionState();
+            });
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    resetTransitionState();
+                }
             });
 
             const currentPath = window.location.pathname.toLowerCase();
@@ -218,6 +235,11 @@
                 event.preventDefault();
                 document.body.classList.add('page-transitioning');
                 veil?.classList.add('is-active');
+
+                // Safety net: if navigation is interrupted, restore the page state.
+                window.setTimeout(() => {
+                    resetTransitionState();
+                }, 1200);
 
                 setTimeout(() => {
                     window.location.assign(anchor.href);

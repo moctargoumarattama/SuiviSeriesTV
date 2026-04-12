@@ -21,8 +21,8 @@
     <div class="card-body">
         <form method="get" asp-action="Users" class="row g-3 align-items-end">
             <div class="col-lg-10">
-                <label class="form-label" for="search">Rechercher par email</label>
-                <input id="search" name="search" class="form-control form-control-lg" value="@search" placeholder="ex: user@zerratv.local" />
+                <label class="form-label" for="search">Rechercher par email ou nom utilisateur</label>
+                <input id="search" name="search" class="form-control form-control-lg" value="@search" placeholder="ex: user@zerratv.local ou zerra_user" />
             </div>
             <div class="col-lg-2 d-grid">
                 <button type="submit" class="btn btn-primary btn-lg">Rechercher</button>
@@ -49,6 +49,7 @@ else
                     <thead>
                         <tr>
                             <th>Email</th>
+                            <th>Nom utilisateur</th>
                             <th>Confirmation</th>
                             <th>Profil</th>
                             <th>Etat</th>
@@ -61,6 +62,21 @@ else
                         {
                             <tr>
                                 <td class="fw-semibold" data-label="Email">@user.Email</td>
+                                <td data-label="Nom utilisateur">
+                                    <form asp-action="RenameUser" method="post" class="d-flex gap-1 align-items-center">
+                                        <input type="hidden" name="id" value="@user.Id" />
+                                        @Html.AntiForgeryToken()
+                                        <input
+                                            type="text"
+                                            name="newUserName"
+                                            value="@user.UserName"
+                                            class="form-control form-control-sm"
+                                            minlength="3"
+                                            maxlength="32"
+                                            required />
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary">Renommer</button>
+                                    </form>
+                                </td>
                                 <td data-label="Confirmation">
                                     @if (user.EmailConfirmed)
                                     {
